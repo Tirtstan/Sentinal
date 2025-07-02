@@ -1,0 +1,32 @@
+{
+    "name": "com.tirt.menu-navigation",
+    "version": "3.5.0",
+    "displayName": "Menu Navigation",
+    "description": "A package that provides a set of tools to manage menus in Unity.",
+    "unity": "2021.3",
+    "unityRelease": "0f1",
+    "documentationUrl": "https://github.com/Tirtstan/Menu-Navigation/blob/main/README.md",
+    "changelogUrl": "https://github.com/Tirtstan/Menu-Navigation/releases/latest",
+    "licensesUrl": "https://github.com/Tirtstan/Menu-Navigation/blob/main/LICENSE.md",
+    "keywords": [
+        "ui",
+        "menu",
+        "page",
+        "panel",
+        "navigation",
+        "navigator",
+        "input",
+        "stack"
+    ],
+    "author": {
+        "name": "Tirt",
+        "url": "https://github.com/Tirtstan"
+    },
+    "samples": [
+        {
+            "displayName": "Examples",
+            "description": "Contains examples for how to use the Menu Navigation package.",
+            "path": "Samples/Examples"
+        }
+    ]
+}
