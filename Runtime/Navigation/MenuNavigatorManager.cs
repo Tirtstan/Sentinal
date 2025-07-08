@@ -113,5 +113,22 @@ namespace MenuNavigation
 
             return menuInfoBuilder.ToString().TrimEnd();
         }
+
+        public int GetMenuIndex(MenuNavigator menu)
+        {
+            if (menu == null)
+                return -1;
+
+            int index = 0;
+            foreach (MenuNavigator m in menuHistory)
+            {
+                if (m == menu)
+                    return index;
+
+                index++;
+            }
+
+            return -1;
+        }
     }
 }

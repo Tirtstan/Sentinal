@@ -11,11 +11,17 @@ namespace MenuNavigation.Samples
         private void Awake()
         {
             menuLogText = GetComponent<TextMeshProUGUI>();
+            MenuNavigatorManager.Instance.OnMenuSwitched += OnMenuSwitched;
+            UpdateText();
         }
 
-        private void Update()
+        private void OnMenuSwitched(MenuNavigator navigator1, MenuNavigator navigator2) => UpdateText();
+
+        private void UpdateText() => menuLogText.SetText(MenuNavigatorManager.Instance.ToString());
+
+        private void OnDestroy()
         {
-            menuLogText.SetText(MenuNavigatorManager.Instance.ToString());
+            MenuNavigatorManager.Instance.OnMenuSwitched -= OnMenuSwitched;
         }
     }
 }

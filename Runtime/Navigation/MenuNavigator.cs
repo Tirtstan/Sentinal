@@ -6,21 +6,26 @@ namespace MenuNavigation
     [AddComponentMenu("Menu Navigation/Menu Navigator")]
     public class MenuNavigator : MonoBehaviour, INavigableMenu
     {
-        public bool IsOpen => gameObject.activeInHierarchy;
         public GameObject FirstSelected => firstSelected;
 
-        [Header("Navigation")]
+        [Header("Components")]
         [SerializeField]
         [Tooltip("The first selected GameObject when active.")]
         private GameObject firstSelected;
 
+        [Header("Configs")]
         [SerializeField]
-        [Tooltip("Auto-select saved GameObject on enable.")]
+        [Tooltip("Whether to add and remove this navigator in the navigator history.")]
+        private bool trackNavigator = true;
+
+        [SerializeField]
+        [Tooltip("Auto-select the last saved or first GameObject on enable.")]
         private bool autoSelectOnEnable = true;
 
         [SerializeField]
         [Tooltip("Whether to remember the last selected GameObject when disabled.")]
         private bool rememberLastSelected = true;
+
         private GameObject lastSelected;
         private bool isQuitting;
 
@@ -36,7 +41,8 @@ namespace MenuNavigation
             if (autoSelectOnEnable)
                 Select();
 
-            MenuNavigatorManager.Instance.RegisterMenuOpen(this);
+            if (trackNavigator)
+                MenuNavigatorManager.Instance.RegisterMenuOpen(this);
         }
 
         private void OnDisable()
@@ -48,7 +54,8 @@ namespace MenuNavigation
             if (currentSelected != null && IsSelectablePartOfThisMenu(currentSelected))
                 lastSelected = currentSelected;
 
-            MenuNavigatorManager.Instance.RegisterMenuClose(this);
+            if (trackNavigator)
+                MenuNavigatorManager.Instance.RegisterMenuClose(this);
         }
 
         public void Select()
