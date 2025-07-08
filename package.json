@@ -2,7 +2,7 @@
     "name": "com.tirt.menu-navigation",
     "version": "1.1.0",
     "displayName": "Menu Navigation",
-    "description": "A package that provides a set of tools to manage menus in Unity.",
+    "description": "A package that provides a set of tools to manage menu navigation in Unity.",
     "unity": "2021.3",
     "unityRelease": "0f1",
     "documentationUrl": "https://github.com/Tirtstan/Menu-Navigation/blob/main/README.md",
