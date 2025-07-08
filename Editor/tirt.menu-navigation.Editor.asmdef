@@ -1,0 +1,16 @@
+{
+    "name": "tirt.menu-navigation.Editor",
+    "rootNamespace": "MenuNavigation",
+    "references": [
+        "tirt.menu-navigation"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
