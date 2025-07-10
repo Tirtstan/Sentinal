@@ -8,8 +8,7 @@ A Unity package for managing menu navigation.
 2.  Add a `MenuNavigator` component onto your desired user interface element.
 
 > [!NOTE]  
-> **MenuNavigatorManager is required for this package to work.
-> MenuNavigator expects its attached game object to be disabled `(OnDisable)` and enabled `(OnEnable)` to respond to close and open events.**
+> **`MenuNavigatorManager` is required for this package to work. `MenuNavigator` expects its attached game object to be disabled `(OnDisable)` and enabled `(OnEnable)` to respond to close and open events.**
 
 ## Features
 
