@@ -1,6 +1,6 @@
 {
     "name": "com.tirt.menu-navigation",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "displayName": "Menu Navigation",
     "description": "A package that provides a set of tools to manage menu navigation in Unity.",
     "unity": "2021.3",

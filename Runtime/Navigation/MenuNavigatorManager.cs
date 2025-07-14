@@ -5,7 +5,6 @@ using UnityEngine;
 
 namespace MenuNavigation
 {
-    [DefaultExecutionOrder(-1)]
     public class MenuNavigatorManager : MonoBehaviour
     {
         public static MenuNavigatorManager Instance { get; private set; }
@@ -23,6 +22,18 @@ namespace MenuNavigation
         public MenuNavigator CurrentMenu => menuHistory.Count > 0 ? menuHistory.Last.Value : null;
         public bool AnyMenusOpen => menuHistory.Count > 0;
         public int MenuCount => menuHistory.Count;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+        private static void InitializeSingletonOnLoad()
+        {
+            Instance = FindFirstObjectByType<MenuNavigatorManager>();
+
+            if (Instance == null)
+            {
+                var singletonObject = new GameObject(typeof(MenuNavigatorManager).Name);
+                Instance = singletonObject.AddComponent<MenuNavigatorManager>();
+            }
+        }
 
         private void Awake()
         {
