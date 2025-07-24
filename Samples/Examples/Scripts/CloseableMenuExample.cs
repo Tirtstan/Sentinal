@@ -1,8 +1,8 @@
 using UnityEngine;
 
-namespace MenuNavigation.Samples
+namespace Sentinal.Samples
 {
-    public class CloseableMenuExample : MonoBehaviour, ICloseableMenu
+    public class CloseableMenuExample : MonoBehaviour, ICloseableView
     {
         public void Close()
         {

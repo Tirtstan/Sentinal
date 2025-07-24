@@ -1,7 +1,7 @@
 using TMPro;
 using UnityEngine;
 
-namespace MenuNavigation.Samples
+namespace Sentinal.Samples
 {
     [RequireComponent(typeof(TextMeshProUGUI))]
     public class MenuLogText : MonoBehaviour
@@ -11,17 +11,17 @@ namespace MenuNavigation.Samples
         private void Awake()
         {
             menuLogText = GetComponent<TextMeshProUGUI>();
-            MenuNavigatorManager.Instance.OnMenuSwitched += OnMenuSwitched;
+            Sentinal.Instance.OnSwitch += OnSwitch;
             UpdateText();
         }
 
-        private void OnMenuSwitched(MenuNavigator navigator1, MenuNavigator navigator2) => UpdateText();
+        private void OnSwitch(SentinalViewSelector view1, SentinalViewSelector view2) => UpdateText();
 
-        private void UpdateText() => menuLogText.SetText(MenuNavigatorManager.Instance.ToString());
+        private void UpdateText() => menuLogText.SetText(Sentinal.Instance.ToString());
 
         private void OnDestroy()
         {
-            MenuNavigatorManager.Instance.OnMenuSwitched -= OnMenuSwitched;
+            Sentinal.Instance.OnSwitch -= OnSwitch;
         }
     }
 }

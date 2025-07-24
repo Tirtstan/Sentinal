@@ -1,6 +1,6 @@
 {
-    "name": "tirt.menu-navigation",
-    "rootNamespace": "MenuNavigation",
+    "name": "tirt.sentinal",
+    "rootNamespace": "Sentinal",
     "references": [
         "Unity.TextMeshPro",
         "Unity.InputSystem"

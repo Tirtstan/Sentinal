@@ -425,6 +425,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   firstSelected: {fileID: 854384027}
+  trackView: 1
   autoSelectOnEnable: 1
   rememberLastSelected: 1
 --- !u!114 &52973013
@@ -593,7 +594,7 @@ GameObject:
   - component: {fileID: 192383869}
   - component: {fileID: 192383868}
   m_Layer: 0
-  m_Name: MenuNavigatorManager
+  m_Name: Sentinal
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2560,6 +2561,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   firstSelected: {fileID: 1554388209}
+  trackView: 1
   autoSelectOnEnable: 1
   rememberLastSelected: 1
 --- !u!114 &2010309942

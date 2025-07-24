@@ -1,8 +1,8 @@
 {
-    "name": "tirt.menu-navigation.Editor",
-    "rootNamespace": "MenuNavigation",
+    "name": "tirt.sentinal.Editor",
+    "rootNamespace": "Sentinal",
     "references": [
-        "tirt.menu-navigation"
+        "tirt.sentinal"
     ],
     "includePlatforms": [
         "Editor"

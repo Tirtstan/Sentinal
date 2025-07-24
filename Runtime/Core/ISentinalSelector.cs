@@ -1,8 +1,8 @@
 using UnityEngine;
 
-namespace MenuNavigation
+namespace Sentinal
 {
-    public interface INavigableMenu
+    public interface ISentinalSelector
     {
         public GameObject FirstSelected { get; }
         public void Select();

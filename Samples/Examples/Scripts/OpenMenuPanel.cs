@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace MenuNavigation.Samples
+namespace Sentinal.Samples
 {
     public class OpenMenuPanel : MonoBehaviour
     {
