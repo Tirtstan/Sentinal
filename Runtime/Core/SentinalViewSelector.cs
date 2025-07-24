@@ -20,7 +20,7 @@ namespace Sentinal
         private bool trackView = true;
 
         [SerializeField]
-        [Tooltip("Auto-select on enable.")]
+        [Tooltip("Whether to automatically select the first selected GameObject on enable.")]
         private bool autoSelectOnEnable = true;
 
         [SerializeField]

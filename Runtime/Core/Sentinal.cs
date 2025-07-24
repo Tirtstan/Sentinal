@@ -84,7 +84,7 @@ namespace Sentinal
                 CurrentView.gameObject.SetActive(false);
         }
 
-        public void CloseAllView()
+        public void CloseAllViews()
         {
             List<SentinalViewSelector> viewsToClose = new(viewHistory);
             foreach (var view in viewsToClose)

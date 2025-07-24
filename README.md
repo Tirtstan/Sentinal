@@ -15,30 +15,30 @@ A Unity package for managing hierarchical menu navigation with history-based sta
 
 ### Core Navigation
 
--   **Stack-Based Menu Management**: Navigate through multiple menus with automatic history tracking
--   **Smart UI Selection**: Auto-selection of UI elements with memory of last selected items
--   **Flexible View Switching**: Seamless transitions between different menu states
--   **iew History Tracking**: Complete navigation history with debugging support
+-   **Stack-Based Menu Management**: Navigate through multiple menus with automatic history tracking.
+-   **Smart UI Selection**: Auto-selection of UI elements with memory of last selected items.
+-   **Flexible View Switching**: Seamless transitions between different menu states.
+-   **iew History Tracking**: Complete navigation history with debugging support.
 
 ### Input System Integration
 
--   **Input System Support**: Optional integration with Unity's new Input System
--   **Action Map Switching**: Automatic switching between Player/UI action maps
--   **Keyboard Navigation**: Built-in cancel and focus actions
--   **Configurable Controls**: Customizable input actions for different menu behaviors
+-   **Input System Support**: Optional integration with Unity's new Input System.
+-   **Action Map Switching**: Automatic switching between Player/UI action maps.
+-   **Keyboard Navigation**: Built-in cancel and focus actions.
+-   **Configurable Controls**: Customizable input actions for different menu behaviors.
 
 ### Developer Experience
 
--   **🛠️ Custom Editor Tools**: Runtime debugging with view stack visualization
--   **🔌 Extensible Interfaces**: `ICloseableView` to customise closing functionality.
+-   **Custom Editor Tools**: Runtime debugging with view stack visualization.
+-   **Extensible Interfaces**: `ICloseableView` to customise closing functionality.
 
-## 📦 Requirements
+## Requirements
 
 -   **Unity 2019.4** or later
 -   **Input System package** (optional, for input handling features)
 -   **TextMeshPro** (for sample scenes)
 
-## 🔧 Core Components
+## Core Components
 
 ### `Sentinal` (Singleton Manager)
 
@@ -47,7 +47,7 @@ The central manager that handles all menu navigation logic.
 ```csharp
 // Access the singleton
 Sentinal.Instance.CloseCurrentView();
-Sentinal.Instance.CloseAllView();
+Sentinal.Instance.CloseAllViews();
 
 // Check navigation state
 bool hasMenus = Sentinal.Instance.AnyViewsOpen;
@@ -101,7 +101,7 @@ menuGameObject.SetActive(true); // Automatically tracked by Sentinal
 Sentinal.Instance.CloseCurrentView();
 ```
 
-### Custom Closeable Menu
+### Custom Closeable Menu With `ICloseableView`
 
 ```csharp
 public class CustomMenu : MonoBehaviour, ICloseableView
@@ -142,27 +142,14 @@ private void OnMenuSwitched(SentinalViewSelector from, SentinalViewSelector to)
 }
 ```
 
-## Interfaces
-
-### `ICloseableView`
-
-Implement this for custom close behavior:
-
-```csharp
-public interface ICloseableView
-{
-    public void Close();
-}
-```
-
 ## Debugging
 
 ### Runtime Inspector
 
 The custom editor shows real-time debugging information:
 
--   Current view index in the stack
--   Whether the view is currently active
+-   Current view index in the stack.
+-   Whether the view is currently active.
 
 ## Best Practices
 
