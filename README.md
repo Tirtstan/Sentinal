@@ -1,42 +1,37 @@
-# Sentinal - Unity Menu Navigation System
+# Sentinal - Unity UI Management & Selection System
 
 A Unity package for managing hierarchical menu navigation with history-based stack management, input system integration, and automatic UI element selection.
 
 ## Quick Start
 
 1. **Add the Core Manager**: Place the `Sentinal` singleton component in your scene.
-2. **Setup Menu Views**: Add `SentinalViewSelector` components to your menu GameObjects for view history and selection support.
-3. **Optional Input Integration**: Add `InputSystemHandler` for automatic input management.
+1. **Setup Menu Views**: Add `SentinalViewSelector` components to your menu GameObjects for view history and selection support.
+1. **Optional Input Integration**: Add `InputSystemHandler` for automatic input management.
+
+> [!TIP]  
+> You can use the provided **Sentinal** prefab within the "Examples" sample.
 
 > [!IMPORTANT]  
-> **The `Sentinal` component is required for this package to work. Menu navigation is triggered by GameObject activation/deactivation (`OnEnable`/`OnDisable`).**
+> **The `Sentinal` component is required for this package to work. Auto selection and view tracking is triggered by GameObject activation/deactivation (`OnEnable`/`OnDisable`).**
 
 ## Features
 
 ### Core Navigation
 
--   **Stack-Based Menu Management**: Navigate through multiple menus with automatic history tracking.
--   **Smart UI Selection**: Auto-selection of UI elements with memory of last selected items.
--   **Flexible View Switching**: Seamless transitions between different menu states.
--   **iew History Tracking**: Complete navigation history with debugging support.
+-   Stack-Based Menu Management: Navigate through multiple menus with automatic history tracking.
+-   Smart UI Selection: Auto-selection of UI elements with memory of last selected items.
+-   View History Tracking: Complete navigation history with debugging support.
 
-### Input System Integration
+## Input System Integration (Optional)
 
--   **Input System Support**: Optional integration with Unity's new Input System.
--   **Action Map Switching**: Automatic switching between Player/UI action maps.
--   **Keyboard Navigation**: Built-in cancel and focus actions.
--   **Configurable Controls**: Customizable input actions for different menu behaviors.
-
-### Developer Experience
-
--   **Custom Editor Tools**: Runtime debugging with view stack visualization.
--   **Extensible Interfaces**: `ICloseableView` to customise closing functionality.
+-   Action Map Switching: Automatic switching between Player/UI action maps.
+-   Button Response: Cancel and focus actions to backtrack and reselect views.
 
 ## Requirements
 
 -   **Unity 2019.4** or later
--   **Input System package** (optional, for input handling features)
--   **TextMeshPro** (for sample scenes)
+-   **Input System** (optional, for input handling features)
+-   **TextMeshPro** (for sample scene)
 
 ## Core Components
 
