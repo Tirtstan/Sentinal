@@ -425,6 +425,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   firstSelected: {fileID: 854384027}
+  rootView: 1
   trackView: 1
   autoSelectOnEnable: 1
   rememberLastSelected: 1
@@ -2470,6 +2471,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   firstSelected: {fileID: 1554388209}
+  rootView: 0
   trackView: 1
   autoSelectOnEnable: 1
   rememberLastSelected: 1

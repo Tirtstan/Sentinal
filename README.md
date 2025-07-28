@@ -1,6 +1,6 @@
 # Sentinal - Unity UI Management & Selection System
 
-A Unity package for managing hierarchical menu navigation with history-based stack management, input system integration, and automatic UI element selection.
+A Unity package for managing hierarchical menu/view navigation with history-based tracking management, input system integration, and automatic UI element selection.
 
 ## Quick Start
 
@@ -18,14 +18,13 @@ A Unity package for managing hierarchical menu navigation with history-based sta
 
 ### Core Navigation
 
--   Stack-Based Menu Management: Navigate through multiple menus with automatic history tracking.
--   Smart UI Selection: Auto-selection of UI elements with memory of last selected items.
--   View History Tracking: Complete navigation history with debugging support.
+-   **Menu/View Management:** Navigate through multiple menus/views with automatic history tracking.
+-   **Smart UI Selection:** Auto-selection of UI elements with memory of last selected items.
 
 ## Input System Integration (Optional)
 
--   Action Map Switching: Automatic switching between Player/UI action maps.
--   Button Response: Cancel and focus actions to backtrack and reselect views.
+-   **Action Map Switching:** Automatic switching between Player/UI (or custom) action maps.
+-   **Button Response:** Cancel and focus actions to backtrack and reselect views.
 
 ## Requirements
 
@@ -37,7 +36,7 @@ A Unity package for managing hierarchical menu navigation with history-based sta
 
 ### `Sentinal` (Singleton Manager)
 
-The central manager that handles all menu navigation logic.
+The central manager that handles all menu/view navigation logic.
 
 ```csharp
 // Access the singleton
@@ -49,36 +48,38 @@ bool hasMenus = Sentinal.Instance.AnyViewsOpen;
 SentinalViewSelector current = Sentinal.Instance.CurrentView;
 ```
 
-### `SentinalViewSelector` (Menu Component)
+### `SentinalViewSelector` (Menu/View Component)
 
-Add this to any GameObject that represents a menu or navigable view.
+Add this to any parent or child `GameObject` that represents a menu or navigable view that has its active state enabled and disabled (`OnEnable`/`OnDisable`).
 
-```csharp
-[SerializeField] private GameObject firstSelected;  // Auto-selected when menu opens
-[SerializeField] private bool trackView = true;     // Include in navigation history
-[SerializeField] private bool autoSelectOnEnable = true;
-[SerializeField] private bool rememberLastSelected = true;
-```
+**Properties:**
+
+-   `firstSelected` - The GameObject to auto-select when this view becomes active.
+-   `rootView` - Treat as root view (added to history but never closed automatically).
+-   `trackView` - Whether to include this view in the navigation history stack.
+-   `autoSelectOnEnable` - Automatically select the first element when view is enabled.
+-   `rememberLastSelected` - Remember and restore the last selected UI element.
 
 ### `InputSystemHandler` (Optional Input Manager)
 
-Handles Input System integration for keyboard/gamepad navigation.
+Handles Input System integration for keyboard, gamepad, etc navigation.
 
-```csharp
-[SerializeField] private PlayerInput playerInput;
-[SerializeField] private InputActionReference cancelAction;   // Close current menu
-[SerializeField] private InputActionReference focusAction;    // Refocus last selected element
-```
+**Properties:**
+
+-   `playerInput` - Reference to the `PlayerInput` component for input handling. See `SetPlayerInput(PlayerInput)` for providing reference programmatically.
+-   `cancelAction` - Input action to close the current menu/view.
+-   `focusAction` - Input action to refocus the last selected element in current view.
 
 ### `InputActionSwitcher` (Auto Action Map Switching)
 
 Automatically switches between action maps when menus open/close.
 
-```csharp
-[SerializeField] private string onEnableActionMapName = "UI";
-[SerializeField] private string onAllDisableActionMapName = "Player";
-[SerializeField] private bool rememberPreviousActionMap = true;
-```
+**Properties:**
+
+-   `onEnableActionMapName` - Action map name to switch to when this view opens.
+-   `onAllDisableActionMapName` - Action map name when all views are closed.
+-   `rememberPreviousActionMap` - Remember and restore previous action map instead of using `onAllDisableActionMapName`.
+-   `logSwitching` - Enable debug logging for action map switches.
 
 ## Usage Examples
 

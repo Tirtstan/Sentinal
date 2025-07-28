@@ -16,6 +16,12 @@ namespace Sentinal
 
         [Header("Configs")]
         [SerializeField]
+        [Tooltip(
+            "Treat this as the root view. This view is added to the view history, but is not closed automatically."
+        )]
+        private bool rootView;
+
+        [SerializeField]
         [Tooltip("Whether to track this view in the view history.")]
         private bool trackView = true;
 
@@ -32,6 +38,16 @@ namespace Sentinal
         private void Awake()
         {
             Application.quitting += OnQuit;
+            Sentinal.Instance.OnSwitch += OnSwitch;
+        }
+
+        private void OnSwitch(SentinalViewSelector selector1, SentinalViewSelector selector2)
+        {
+            if (selector1 == this || selector2 == this)
+            {
+                if (rememberLastSelected)
+                    SaveLastSelection();
+            }
         }
 
         private void OnQuit() => isQuitting = true;
@@ -78,7 +94,7 @@ namespace Sentinal
             EventSystem.current.SetSelectedGameObject(selected);
         }
 
-        private void SaveCurrentSelection()
+        private void SaveLastSelection()
         {
             GameObject currentSelected = EventSystem.current.currentSelectedGameObject;
             if (currentSelected != null && IsSelectablePartOfThis(currentSelected))
@@ -90,12 +106,16 @@ namespace Sentinal
             if (isQuitting)
                 return;
 
-            if (rememberLastSelected)
-                SaveCurrentSelection();
-
             if (trackView)
                 Sentinal.Instance.Pop(this);
         }
+
+        /// <summary>
+        /// Checks if this view is the root view.
+        /// The root view does not close automatically.
+        /// </summary>
+        /// <returns>If this is a root view.</returns>
+        public bool IsRootView() => rootView;
 
         /// <summary>
         /// Checks if the selectable GameObject is part of this selector's hierarchy.
@@ -122,6 +142,7 @@ namespace Sentinal
         private void OnDestroy()
         {
             Application.quitting -= OnQuit;
+            Sentinal.Instance.OnSwitch -= OnSwitch;
         }
     }
 }

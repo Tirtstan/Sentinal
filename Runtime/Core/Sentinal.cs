@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace Sentinal
 {
-    [DefaultExecutionOrder(-1)]
+    [DefaultExecutionOrder(-5)]
     public class Sentinal : MonoBehaviour
     {
         public static Sentinal Instance { get; private set; }
@@ -29,6 +29,10 @@ namespace Sentinal
         private readonly LinkedList<SentinalViewSelector> viewHistory = new();
         private readonly StringBuilder viewInfoBuilder = new();
 
+        /// <summary>
+        /// Gets the last view in the history.
+        /// Returns null if no views are open.
+        /// </summary>
         public SentinalViewSelector CurrentView => viewHistory.Count > 0 ? viewHistory.Last.Value : null;
         public bool AnyViewsOpen => viewHistory.Count > 0;
         public int ViewCount => viewHistory.Count;
@@ -66,7 +70,7 @@ namespace Sentinal
 
             if (wasCurrentView && CurrentView != null)
             {
-                if (CurrentView.TryGetComponent(out SentinalViewSelector selector))
+                if (CurrentView.TryGetComponent(out ISentinalSelector selector))
                     selector.Select();
             }
 
@@ -75,7 +79,7 @@ namespace Sentinal
 
         public void CloseCurrentView()
         {
-            if (CurrentView == null)
+            if (CurrentView == null || CurrentView.IsRootView())
                 return;
 
             if (CurrentView.TryGetComponent(out ICloseableView closeableView))
@@ -84,11 +88,14 @@ namespace Sentinal
                 CurrentView.gameObject.SetActive(false);
         }
 
-        public void CloseAllViews()
+        public void CloseAllViews(bool includeRoots = false)
         {
-            List<SentinalViewSelector> viewsToClose = new(viewHistory);
+            var viewsToClose = new List<SentinalViewSelector>(viewHistory);
             foreach (var view in viewsToClose)
             {
+                if (view.IsRootView() && !includeRoots)
+                    continue;
+
                 if (view.TryGetComponent(out ICloseableView closeableView))
                     closeableView.Close();
                 else

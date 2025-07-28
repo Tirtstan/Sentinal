@@ -5,7 +5,6 @@ using UnityEngine.InputSystem;
 
 namespace Sentinal
 {
-    [RequireComponent(typeof(Sentinal))]
     [AddComponentMenu("Sentinal/Input System Handler"), DisallowMultipleComponent]
     public class InputSystemHandler : MonoBehaviour
     {

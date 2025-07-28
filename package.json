@@ -1,8 +1,8 @@
 {
     "name": "com.tirt.sentinal",
-    "version": "2.0.0",
+    "version": "2.1.0",
     "displayName": "Sentinal",
-    "description": "A package that provides a set of tools to manage menu navigation and selection in Unity.",
+    "description": "A package that provides a set of tools to manage menu/view navigation and selection in Unity.",
     "unity": "2019.4",
     "unityRelease": "0f1",
     "documentationUrl": "https://github.com/Tirtstan/Sentinal/blob/main/README.md",
