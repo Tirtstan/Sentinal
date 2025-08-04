@@ -425,8 +425,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   firstSelected: {fileID: 854384027}
-  rootView: 1
+  rootView: 0
+  exclusiveView: 0
   trackView: 1
+  preventSelection: 0
   autoSelectOnEnable: 1
   rememberLastSelected: 1
 --- !u!114 &52973013
@@ -2472,7 +2474,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   firstSelected: {fileID: 1554388209}
   rootView: 0
+  exclusiveView: 0
   trackView: 1
+  preventSelection: 0
   autoSelectOnEnable: 1
   rememberLastSelected: 1
 --- !u!114 &2010309942

@@ -15,6 +15,7 @@ namespace Sentinal
         private GameObject firstSelected;
 
         [Header("Configs")]
+        [Header("View")]
         [SerializeField]
         [Tooltip(
             "Treat this as the root view. This view is added to the view history, but is not closed automatically."
@@ -22,8 +23,21 @@ namespace Sentinal
         private bool rootView;
 
         [SerializeField]
+        [Tooltip(
+            "Whether this view is exclusive. If true, it will close all other views (except root views) when opened."
+        )]
+        private bool exclusiveView;
+
+        [SerializeField]
         [Tooltip("Whether to track this view in the view history.")]
         private bool trackView = true;
+
+        [Header("Selection")]
+        [SerializeField]
+        [Tooltip(
+            "Whether to prevent selection of this view. This is useful for views that interact through only input actions."
+        )]
+        private bool preventSelection;
 
         [SerializeField]
         [Tooltip("Whether to automatically select the first selected GameObject on enable.")]
@@ -38,24 +52,24 @@ namespace Sentinal
         private void Awake()
         {
             Application.quitting += OnQuit;
-            Sentinal.Instance.OnSwitch += OnSwitch;
+            SentinalManager.Instance.OnSwitch += OnSwitch;
         }
 
         private void OnSwitch(SentinalViewSelector selector1, SentinalViewSelector selector2)
         {
-            if (selector1 == this || selector2 == this)
-            {
-                if (rememberLastSelected)
-                    SaveLastSelection();
-            }
+            if (selector1 == this && rememberLastSelected)
+                SaveLastSelection();
         }
 
         private void OnQuit() => isQuitting = true;
 
         private void OnEnable()
         {
+            if (exclusiveView)
+                SentinalManager.Instance.CloseAllViews();
+
             if (trackView)
-                Sentinal.Instance.Push(this);
+                SentinalManager.Instance.Add(this);
 
             if (autoSelectOnEnable)
                 Select();
@@ -76,10 +90,7 @@ namespace Sentinal
         public void SelectFirstSelected()
         {
             if (firstSelected == null)
-            {
-                Debug.LogWarning($"FirstSelected is not set for {gameObject.name}!");
                 return;
-            }
 
             SetSelected(firstSelected);
         }
@@ -88,6 +99,12 @@ namespace Sentinal
 
         private void SetSelected(GameObject selected)
         {
+            if (preventSelection)
+            {
+                EventSystem.current.SetSelectedGameObject(null);
+                return;
+            }
+
             if (selected == null || !selected.activeInHierarchy)
                 return;
 
@@ -106,8 +123,11 @@ namespace Sentinal
             if (isQuitting)
                 return;
 
+            if (rememberLastSelected)
+                SaveLastSelection();
+
             if (trackView)
-                Sentinal.Instance.Pop(this);
+                SentinalManager.Instance.Remove(this);
         }
 
         /// <summary>
@@ -116,6 +136,18 @@ namespace Sentinal
         /// </summary>
         /// <returns>If this is a root view.</returns>
         public bool IsRootView() => rootView;
+
+        /// <summary>
+        /// Checks if this view is exclusive.
+        /// </summary>
+        /// <returns>If this is an exclusive view.</returns>
+        public bool IsExclusiveView() => exclusiveView;
+
+        /// <summary>
+        /// Checks if this view prevents selection.
+        /// </summary>
+        /// <returns>If this view prevents selection.</returns>
+        public bool HasPreventSelection() => preventSelection;
 
         /// <summary>
         /// Checks if the selectable GameObject is part of this selector's hierarchy.
@@ -142,7 +174,7 @@ namespace Sentinal
         private void OnDestroy()
         {
             Application.quitting -= OnQuit;
-            Sentinal.Instance.OnSwitch -= OnSwitch;
+            SentinalManager.Instance.OnSwitch -= OnSwitch;
         }
     }
 }

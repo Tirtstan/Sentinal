@@ -1,4 +1,6 @@
 #if ENABLE_INPUT_SYSTEM
+using System;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -8,6 +10,8 @@ namespace Sentinal
     [AddComponentMenu("Sentinal/Input Action Switcher"), DisallowMultipleComponent]
     public class InputActionSwitcher : MonoBehaviour
     {
+        public event Action<PlayerInput> OnActionMapSwitch;
+
         [Header("Configs")]
         [SerializeField]
         [Tooltip("The name of the action map to switch to when menus are opened.")]
@@ -26,27 +30,43 @@ namespace Sentinal
         [Header("Debug")]
         [SerializeField]
         private bool logSwitching;
-
         private PlayerInput playerInput;
+        private string previousActionMapName;
 
         private void OnEnable()
         {
-            if (playerInput == null)
-                playerInput = InputSystemHandler.Instance.GetPlayerInput();
+            playerInput = PlayerInput.all.FirstOrDefault();
 
-            InputSystemHandler.Instance.SwitchActionMap(onEnableActionMapName);
+            if (playerInput != null)
+            {
+                if (rememberPreviousActionMap)
+                    previousActionMapName = playerInput.currentActionMap.name;
+
+                if (logSwitching)
+                    Debug.Log($"Switching from '{previousActionMapName}' to '{onEnableActionMapName}'");
+
+                playerInput.SwitchCurrentActionMap(onEnableActionMapName);
+                OnActionMapSwitch?.Invoke(playerInput);
+            }
         }
 
         private void OnDisable()
         {
-            if (!Sentinal.Instance.AnyViewsOpen)
-            {
-                string actionMapName = rememberPreviousActionMap
-                    ? InputSystemHandler.Instance.GetPreviousActionMapName()
+            if (SentinalManager.Instance.AnyViewsOpen)
+                return;
+
+            string actionMapName =
+                rememberPreviousActionMap && !string.IsNullOrEmpty(previousActionMapName)
+                    ? previousActionMapName
                     : onAllDisableActionMapName;
 
-                if (!string.IsNullOrEmpty(actionMapName))
-                    InputSystemHandler.Instance.SwitchActionMap(actionMapName);
+            if (playerInput != null && !string.IsNullOrEmpty(actionMapName))
+            {
+                if (logSwitching)
+                    Debug.Log($"Switching back to '{actionMapName}'");
+
+                playerInput.SwitchCurrentActionMap(actionMapName);
+                OnActionMapSwitch?.Invoke(playerInput);
             }
         }
     }

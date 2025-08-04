@@ -1,24 +1,25 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using UnityEngine;
 
 namespace Sentinal
 {
     [DefaultExecutionOrder(-5)]
-    public class Sentinal : MonoBehaviour
+    public class SentinalManager : MonoBehaviour
     {
-        public static Sentinal Instance { get; private set; }
+        public static SentinalManager Instance { get; private set; }
 
         /// <summary>
-        /// Event triggered when a new view is pushed onto the view history.
+        /// Event triggered when a new view is added into the view history.
         /// </summary>
-        public event Action<SentinalViewSelector> OnPush;
+        public event Action<SentinalViewSelector> OnAdd;
 
         /// <summary>
-        /// Event triggered when a view is popped from the view history.
+        /// Event triggered when a view is removed from the view history.
         /// </summary>
-        public event Action<SentinalViewSelector> OnPop;
+        public event Action<SentinalViewSelector> OnRemove;
 
         /// <summary>
         /// Event triggered when switching between views.
@@ -48,25 +49,25 @@ namespace Sentinal
             Instance = this;
         }
 
-        public void Push(SentinalViewSelector view)
+        public void Add(SentinalViewSelector view)
         {
             if (view == null || viewHistory.Contains(view))
                 return;
 
             SentinalViewSelector previousView = CurrentView;
             viewHistory.AddLast(view);
-            OnPush?.Invoke(view);
+            OnAdd?.Invoke(view);
             OnSwitch?.Invoke(previousView, view);
         }
 
-        public void Pop(SentinalViewSelector view)
+        public void Remove(SentinalViewSelector view)
         {
             if (view == null)
                 return;
 
             bool wasCurrentView = view == CurrentView;
             viewHistory.Remove(view);
-            OnPop?.Invoke(view);
+            OnRemove?.Invoke(view);
 
             if (wasCurrentView && CurrentView != null)
             {
@@ -101,6 +102,20 @@ namespace Sentinal
                 else
                     view.gameObject.SetActive(false);
             }
+        }
+
+        public bool TrySelectCurrentView()
+        {
+            if (CurrentView == null || CurrentView.HasPreventSelection())
+                return false;
+
+            if (CurrentView.TryGetComponent(out ISentinalSelector selector))
+            {
+                selector.Select();
+                return true;
+            }
+
+            return false;
         }
 
         public override string ToString()
@@ -138,5 +153,7 @@ namespace Sentinal
 
             return -1;
         }
+
+        public SentinalViewSelector[] GetViewHistory() => viewHistory.ToArray();
     }
 }

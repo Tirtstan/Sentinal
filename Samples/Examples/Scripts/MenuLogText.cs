@@ -11,17 +11,17 @@ namespace Sentinal.Samples
         private void Awake()
         {
             menuLogText = GetComponent<TextMeshProUGUI>();
-            Sentinal.Instance.OnSwitch += OnSwitch;
+            SentinalManager.Instance.OnSwitch += OnSwitch;
             UpdateText();
         }
 
         private void OnSwitch(SentinalViewSelector view1, SentinalViewSelector view2) => UpdateText();
 
-        private void UpdateText() => menuLogText.SetText(Sentinal.Instance.ToString());
+        private void UpdateText() => menuLogText.SetText(SentinalManager.Instance.ToString());
 
         private void OnDestroy()
         {
-            Sentinal.Instance.OnSwitch -= OnSwitch;
+            SentinalManager.Instance.OnSwitch -= OnSwitch;
         }
     }
 }
