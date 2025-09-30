@@ -84,7 +84,7 @@ Handles Input System integration for input navigation. **Requires `SentinalManag
 
 ### `InputActionSwitcher` (Auto Action Map Switching)
 
-Automatically switches between action maps when a view opens/closes. **Requires `SentinalViewSelector` component.**
+Automatically switches between action maps when a view opens/closes. **Requires `ViewSelector` component.**
 
 <img src="Documentation/Images/InputSwitcher.png" alt="Input Action Switcher component."/>
 
@@ -98,7 +98,7 @@ Automatically switches between action maps when a view opens/closes. **Requires 
 // 2. Enable/Disable the GameObject to open/close menus
 
 // Open a menu
-menuGameObject.SetActive(true); // Automatically tracked by SentinalManager
+menuGameObject.SetActive(true); // Automatically tracked by SentinalManager (if ViewSelector is present)
 
 // Close current menu
 SentinalManager.Instance.CloseCurrentView();
@@ -110,7 +110,7 @@ SentinalManager.Instance.CloseAllViews();
 ### Custom Closeable Menu With `ICloseableView`
 
 ```csharp
-[RequireComponent(typeof(SentinalViewSelector))]
+[RequireComponent(typeof(ViewSelector))]
 public class CustomMenu : MonoBehaviour, ICloseableView
 {
     [SerializeField] private Animator menuAnimator;
@@ -135,9 +135,9 @@ public class CustomMenu : MonoBehaviour, ICloseableView
 ```csharp
 private void Start()
 {
-    SentinalManager.Instance.OnAdd += OnMenuOpened;
-    SentinalManager.Instance.OnRemove += OnMenuClosed;
-    SentinalManager.Instance.OnSwitch += OnMenuSwitched;
+    SentinalManager.OnAdd += OnMenuOpened;
+    SentinalManager.OnRemove += OnMenuClosed;
+    SentinalManager.OnSwitch += OnMenuSwitched;
 }
 
 private void OnMenuOpened(SentinalViewSelector view)
