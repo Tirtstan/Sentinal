@@ -1,6 +1,6 @@
 {
     "name": "com.tirt.sentinal",
-    "version": "2.2.0",
+    "version": "2.3.0",
     "displayName": "Sentinal",
     "description": "A package that provides a set of tools to manage menu/view navigation and selection in Unity.",
     "unity": "2019.4",
@@ -26,6 +26,11 @@
         "url": "https://github.com/Tirtstan"
     },
     "samples": [
+        {
+            "displayName": "Components",
+            "description": "Contains component scripts to manage UI elements. Tabbed view and input action button.",
+            "path": "Samples/Components"
+        },
         {
             "displayName": "Examples",
             "description": "Contains examples for how to use the Sentinal package.",

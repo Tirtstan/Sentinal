@@ -1,5 +1,6 @@
 {
-    "name": "InputActions",
+    "version": 1,
+    "name": "InputActionsExamples",
     "maps": [
         {
             "name": "Player",

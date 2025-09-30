@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace Sentinal.Editor
 {
-    [CustomEditor(typeof(SentinalViewSelector))]
+    [CustomEditor(typeof(ViewSelector))]
     public class SentinalViewSelectorEditor : UnityEditor.Editor
     {
         public override void OnInspectorGUI()
@@ -22,7 +22,7 @@ namespace Sentinal.Editor
                 return;
             }
 
-            SentinalViewSelector sentinalView = target as SentinalViewSelector;
+            ViewSelector sentinalView = target as ViewSelector;
 
             EditorGUILayout.Space();
             EditorGUILayout.LabelField("Debug Information", EditorStyles.boldLabel);

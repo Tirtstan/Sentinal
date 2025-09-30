@@ -6,7 +6,7 @@ using UnityEngine.InputSystem;
 
 namespace Sentinal
 {
-    [RequireComponent(typeof(SentinalViewSelector))]
+    [RequireComponent(typeof(ViewSelector))]
     [AddComponentMenu("Sentinal/Input Action Switcher"), DisallowMultipleComponent]
     public class InputActionSwitcher : MonoBehaviour
     {
@@ -27,27 +27,24 @@ namespace Sentinal
         )]
         private bool rememberPreviousActionMap = true;
 
-        [Header("Debug")]
         [SerializeField]
-        private bool logSwitching;
+        [Tooltip(
+            "Whether to switch the action map exclusively (i.e., disable the previous action map). If false, it will enable the new action map without disabling the previous one(s)."
+        )]
+        private bool exclusiveActionMapSwitching = true;
         private PlayerInput playerInput;
         private string previousActionMapName;
 
         private void OnEnable()
         {
             playerInput = PlayerInput.all.FirstOrDefault();
+            if (playerInput == null)
+                return;
 
-            if (playerInput != null)
-            {
-                if (rememberPreviousActionMap)
-                    previousActionMapName = playerInput.currentActionMap.name;
+            if (rememberPreviousActionMap)
+                previousActionMapName = playerInput.currentActionMap.name;
 
-                if (logSwitching)
-                    Debug.Log($"Switching from '{previousActionMapName}' to '{onEnableActionMapName}'");
-
-                playerInput.SwitchCurrentActionMap(onEnableActionMapName);
-                OnActionMapSwitch?.Invoke(playerInput);
-            }
+            SwitchActionMap(onEnableActionMapName, exclusiveActionMapSwitching);
         }
 
         private void OnDisable()
@@ -60,14 +57,24 @@ namespace Sentinal
                     ? previousActionMapName
                     : onAllDisableActionMapName;
 
-            if (playerInput != null && !string.IsNullOrEmpty(actionMapName))
-            {
-                if (logSwitching)
-                    Debug.Log($"Switching back to '{actionMapName}'");
+            SwitchActionMap(actionMapName, exclusiveActionMapSwitching);
+        }
 
+        private void SwitchActionMap(string actionMapName, bool exclusive)
+        {
+            if (playerInput == null || string.IsNullOrEmpty(actionMapName))
+                return;
+
+            if (exclusive)
+            {
                 playerInput.SwitchCurrentActionMap(actionMapName);
-                OnActionMapSwitch?.Invoke(playerInput);
             }
+            else
+            {
+                playerInput.actions.FindActionMap(actionMapName)?.Enable();
+            }
+
+            OnActionMapSwitch?.Invoke(playerInput);
         }
     }
 }

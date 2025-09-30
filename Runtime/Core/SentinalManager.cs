@@ -14,27 +14,28 @@ namespace Sentinal
         /// <summary>
         /// Event triggered when a new view is added into the view history.
         /// </summary>
-        public event Action<SentinalViewSelector> OnAdd;
+        public static event Action<ViewSelector> OnAdd;
 
         /// <summary>
         /// Event triggered when a view is removed from the view history.
         /// </summary>
-        public event Action<SentinalViewSelector> OnRemove;
+        public static event Action<ViewSelector> OnRemove;
 
         /// <summary>
         /// Event triggered when switching between views.
         /// Provides the previous view and the new view respectively.
         /// </summary>
-        public event Action<SentinalViewSelector, SentinalViewSelector> OnSwitch;
+        public static event Action<ViewSelector, ViewSelector> OnSwitch;
 
-        private readonly LinkedList<SentinalViewSelector> viewHistory = new();
+        private readonly LinkedList<ViewSelector> viewHistory = new();
+        private readonly List<ViewSelector> hiddenViews = new();
         private readonly StringBuilder viewInfoBuilder = new();
 
         /// <summary>
         /// Gets the last view in the history.
         /// Returns null if no views are open.
         /// </summary>
-        public SentinalViewSelector CurrentView => viewHistory.Count > 0 ? viewHistory.Last.Value : null;
+        public ViewSelector CurrentView => viewHistory.Count > 0 ? viewHistory.Last.Value : null;
         public bool AnyViewsOpen => viewHistory.Count > 0;
         public int ViewCount => viewHistory.Count;
 
@@ -49,18 +50,18 @@ namespace Sentinal
             Instance = this;
         }
 
-        public void Add(SentinalViewSelector view)
+        public void Add(ViewSelector view)
         {
             if (view == null || viewHistory.Contains(view))
                 return;
 
-            SentinalViewSelector previousView = CurrentView;
+            ViewSelector previousView = CurrentView;
             viewHistory.AddLast(view);
             OnAdd?.Invoke(view);
             OnSwitch?.Invoke(previousView, view);
         }
 
-        public void Remove(SentinalViewSelector view)
+        public void Remove(ViewSelector view)
         {
             if (view == null)
                 return;
@@ -71,7 +72,7 @@ namespace Sentinal
 
             if (wasCurrentView && CurrentView != null)
             {
-                if (CurrentView.TryGetComponent(out ISentinalSelector selector))
+                if (CurrentView.TryGetComponent(out IViewSelector selector))
                     selector.Select();
             }
 
@@ -91,7 +92,7 @@ namespace Sentinal
 
         public void CloseAllViews(bool includeRoots = false)
         {
-            var viewsToClose = new List<SentinalViewSelector>(viewHistory);
+            var viewsToClose = new List<ViewSelector>(viewHistory);
             foreach (var view in viewsToClose)
             {
                 if (view.IsRootView() && !includeRoots)
@@ -104,12 +105,42 @@ namespace Sentinal
             }
         }
 
+        public void HideAllViews(ViewSelector excludeView)
+        {
+            hiddenViews.Clear();
+
+            var viewsToHide = new List<ViewSelector>(viewHistory);
+            foreach (var view in viewsToHide)
+            {
+                if (view == excludeView || !view.gameObject.activeInHierarchy)
+                    continue;
+
+                hiddenViews.Add(view);
+                view.SetBeingHidden(true);
+                view.gameObject.SetActive(false);
+            }
+        }
+
+        public void RestoreHiddenViews()
+        {
+            foreach (var view in hiddenViews)
+            {
+                if (view != null)
+                {
+                    view.SetBeingHidden(false);
+                    view.gameObject.SetActive(true);
+                }
+            }
+
+            hiddenViews.Clear();
+        }
+
         public bool TrySelectCurrentView()
         {
             if (CurrentView == null || CurrentView.HasPreventSelection())
                 return false;
 
-            if (CurrentView.TryGetComponent(out ISentinalSelector selector))
+            if (CurrentView.TryGetComponent(out IViewSelector selector))
             {
                 selector.Select();
                 return true;
@@ -117,6 +148,25 @@ namespace Sentinal
 
             return false;
         }
+
+        public int GetViewIndex(ViewSelector view)
+        {
+            if (view == null)
+                return -1;
+
+            int index = 0;
+            foreach (var v in viewHistory)
+            {
+                if (v == view)
+                    return index;
+
+                index++;
+            }
+
+            return -1;
+        }
+
+        public ViewSelector[] GetViewHistory() => viewHistory.ToArray();
 
         public override string ToString()
         {
@@ -137,23 +187,11 @@ namespace Sentinal
             return viewInfoBuilder.ToString().TrimEnd();
         }
 
-        public int GetViewIndex(SentinalViewSelector view)
+        private void OnDestroy()
         {
-            if (view == null)
-                return -1;
-
-            int index = 0;
-            foreach (var v in viewHistory)
-            {
-                if (v == view)
-                    return index;
-
-                index++;
-            }
-
-            return -1;
+            OnAdd = null;
+            OnRemove = null;
+            OnSwitch = null;
         }
-
-        public SentinalViewSelector[] GetViewHistory() => viewHistory.ToArray();
     }
 }

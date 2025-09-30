@@ -8,12 +8,12 @@ A Unity package for managing hierarchical menu navigation with history tracking,
 ## 🚀 Quick Start
 
 1. **Add the Core Manager**: Place the `SentinalManager` singleton component in your scene.
-2. **Setup Menu Views**: Add `SentinalViewSelector` components to your menu GameObjects.
-3. **Optional Input Integration**: Add `InputSystemHandler` for automatic input management.
-4. **Optional Action Map Switching**: Add `InputActionSwitcher` for seamless input context switching.
+2. **Setup Menu Views**: Add `ViewSelector` components to your active toggling menu GameObjects.
+3. **Optional Input Integration**: Add `InputSystemHandler` for re-selection and back tracking actions.
+4. **Optional Action Map Switching**: Add `InputActionSwitcher` for action map switching.
 
 > [!TIP]  
-> Use the provided **Sentinal** prefab from the Examples sample for quick setup.
+> Use the provided **Sentinal** prefab from the samples for quick setup.
 
 > [!IMPORTANT]  
 > **The `SentinalManager` component is required for this package to work. Navigation is triggered by GameObject activation/deactivation (`OnEnable`/`OnDisable`).**
@@ -30,25 +30,15 @@ A Unity package for managing hierarchical menu navigation with history tracking,
 ### Input System Integration
 
 -   **Action Map Switching**: Automatic switching between Player/UI (or custom) action maps.
--   **Configurable Actions**: Customizable input actions for different canceling and focus.
-
-### Developer Experience
-
--   **Custom Editor Tools**: Runtime debugging with view stack visualization.
--   **Extensible Interfaces**: `ICloseableView` and `ISentinalSelector` for custom behaviours.
--   **Comprehensive Events**: Complete event system for view/menu operations.
-
-## 📋 Requirements
-
--   **Unity 2019.4** or later
--   **Input System package** (optional, for input handling features)
--   **TextMeshPro** (for sample scenes)
+-   **Configurable Actions**: Customisable input actions for canceling and re-selecting.
 
 ## 🔧 Core Components
 
 ### `SentinalManager` (Singleton Manager)
 
 The central manager that handles all view/menu navigation logic and maintains the view stack.
+
+<img src="Documentation/Images/SentinalInspector.png" alt="Sentinal Manager component."/>
 
 **Public API:**
 
@@ -68,36 +58,35 @@ The central manager that handles all view/menu navigation logic and maintains th
 
 Add this to any GameObject that represents a menu or navigable view. One that will be `SetActive(bool)`.
 
-**Properties:**
+<img src="Documentation/Images/ViewSelector.png" alt="View Selector component."/>
+
+#### **Properties:**
+
+##### **View**
 
 -   `firstSelected` - The GameObject to auto-select when this view becomes active.
 -   `rootView` - Treat as root view (added to history but never closed automatically).
 -   `exclusiveView` - Close all other views (except root views) when this view opens.
+-   `hideAllViews` - Hides all other views when opened. Unlike exclusive, this only hides them temporarily.
 -   `trackView` - Whether to include this view in the navigation history stack.
+
+##### **Selection**
+
 -   `preventSelection` - Prevent automatic selection (useful for input-only views).
--   `autoSelectOnEnable` - Automatically select the first element when view is enabled.
+-   `autoSelectOnEnable` - Automatically select the first element when the view is enabled.
 -   `rememberLastSelected` - Remember and restore the last selected UI element.
 
 ### `InputSystemHandler` (Optional Input Manager)
 
-Handles Input System integration for input navigation.
+Handles Input System integration for input navigation. **Requires `SentinalManager` component.**
 
-**Properties:**
-
--   `playerInput` - Reference to the PlayerInput component for input handling.
--   `cancelAction` - Input action reference to close the current menu/view.
--   `focusAction` - Input action reference to refocus the last selected element.
+<img src="Documentation/Images/Input.png" alt="Input System Handler component."/>
 
 ### `InputActionSwitcher` (Auto Action Map Switching)
 
-Automatically switches between action maps when menus open/close. Requires `SentinalViewSelector` component.
+Automatically switches between action maps when a view opens/closes. **Requires `SentinalViewSelector` component.**
 
-**Properties:**
-
--   `onEnableActionMapName` - Action map name to switch to when this view opens (default: "UI").
--   `onAllDisableActionMapName` - Action map name when all views are closed (default: "Player").
--   `rememberPreviousActionMap` - Remember and restore previous action map instead of using onAllDisableActionMapName.
--   `logSwitching` - Enable debug logging for action map switches.
+<img src="Documentation/Images/InputSwitcher.png" alt="Input Action Switcher component."/>
 
 ## 🎯 Usage Examples
 
@@ -163,6 +152,12 @@ private void OnMenuSwitched(SentinalViewSelector from, SentinalViewSelector to)
     // Handle transition effects
 }
 ```
+
+## 📋 Requirements
+
+-   **Unity 2019.4** or later
+-   **Input System package** (optional, for input handling features)
+-   **TextMeshPro** (for sample scenes)
 
 ## 🐛 Debugging
 

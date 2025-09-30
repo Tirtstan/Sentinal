@@ -4,7 +4,7 @@ using UnityEngine.EventSystems;
 namespace Sentinal
 {
     [AddComponentMenu("Sentinal/View Selector"), DisallowMultipleComponent]
-    public class SentinalViewSelector : MonoBehaviour, ISentinalSelector
+    public class ViewSelector : MonoBehaviour, IViewSelector
     {
         public GameObject FirstSelected => firstSelected;
         public GameObject LastSelected => lastSelected;
@@ -29,6 +29,12 @@ namespace Sentinal
         private bool exclusiveView;
 
         [SerializeField]
+        [Tooltip(
+            "Whether this view hides all other views when opened. Unlike exclusive, this only hides them temporarily."
+        )]
+        private bool hideOtherViews;
+
+        [SerializeField]
         [Tooltip("Whether to track this view in the view history.")]
         private bool trackView = true;
 
@@ -48,25 +54,20 @@ namespace Sentinal
         private bool rememberLastSelected = true;
         private GameObject lastSelected;
         private bool isQuitting;
+        private bool isBeingHidden;
 
         private void Awake()
         {
             Application.quitting += OnQuit;
-            SentinalManager.Instance.OnSwitch += OnSwitch;
+            SentinalManager.OnSwitch += OnSwitch;
         }
-
-        private void OnSwitch(SentinalViewSelector selector1, SentinalViewSelector selector2)
-        {
-            if (selector1 == this && rememberLastSelected)
-                SaveLastSelection();
-        }
-
-        private void OnQuit() => isQuitting = true;
 
         private void OnEnable()
         {
             if (exclusiveView)
                 SentinalManager.Instance.CloseAllViews();
+            else if (hideOtherViews)
+                SentinalManager.Instance.HideAllViews(this);
 
             if (trackView)
                 SentinalManager.Instance.Add(this);
@@ -74,6 +75,14 @@ namespace Sentinal
             if (autoSelectOnEnable)
                 Select();
         }
+
+        private void OnSwitch(ViewSelector selector1, ViewSelector selector2)
+        {
+            if (selector1 == this && rememberLastSelected)
+                SaveLastSelection();
+        }
+
+        private void OnQuit() => isQuitting = true;
 
         public void Select()
         {
@@ -99,6 +108,9 @@ namespace Sentinal
 
         private void SetSelected(GameObject selected)
         {
+            if (EventSystem.current == null)
+                return;
+
             if (preventSelection)
             {
                 EventSystem.current.SetSelectedGameObject(null);
@@ -113,6 +125,9 @@ namespace Sentinal
 
         private void SaveLastSelection()
         {
+            if (EventSystem.current == null)
+                return;
+
             GameObject currentSelected = EventSystem.current.currentSelectedGameObject;
             if (currentSelected != null && IsSelectablePartOfThis(currentSelected))
                 lastSelected = currentSelected;
@@ -120,7 +135,7 @@ namespace Sentinal
 
         private void OnDisable()
         {
-            if (isQuitting)
+            if (isQuitting || isBeingHidden)
                 return;
 
             if (rememberLastSelected)
@@ -128,7 +143,17 @@ namespace Sentinal
 
             if (trackView)
                 SentinalManager.Instance.Remove(this);
+
+            if (hideOtherViews)
+                SentinalManager.Instance.RestoreHiddenViews();
         }
+
+        /// <summary>
+        /// Sets whether this view is being hidden temporarily.
+        /// When true, prevents removal from view history on disable.
+        /// </summary>
+        /// <param name="hidden">Whether the view is being hidden.</param>
+        public void SetBeingHidden(bool hidden) => isBeingHidden = hidden;
 
         /// <summary>
         /// Checks if this view is the root view.
@@ -148,6 +173,12 @@ namespace Sentinal
         /// </summary>
         /// <returns>If this view prevents selection.</returns>
         public bool HasPreventSelection() => preventSelection;
+
+        /// <summary>
+        /// Checks if this view hides other views.
+        /// </summary>
+        /// <returns>If this view hides other views.</returns>
+        public bool DoesHideOtherViews() => hideOtherViews;
 
         /// <summary>
         /// Checks if the selectable GameObject is part of this selector's hierarchy.
@@ -174,7 +205,7 @@ namespace Sentinal
         private void OnDestroy()
         {
             Application.quitting -= OnQuit;
-            SentinalManager.Instance.OnSwitch -= OnSwitch;
+            SentinalManager.OnSwitch -= OnSwitch;
         }
     }
 }

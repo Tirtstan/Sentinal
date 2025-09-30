@@ -12,6 +12,10 @@ namespace Sentinal
         [SerializeField]
         private PlayerInput playerInput;
 
+        [SerializeField]
+        [Tooltip("Player index to get PlayerInput from if above is null.")]
+        private int playerIndex = 0;
+
         [Header("Actions")]
         [SerializeField]
         [Tooltip("Action to close the current menu.")]
@@ -21,10 +25,14 @@ namespace Sentinal
         [Tooltip("Action to refocus the last selected element within the current menu.")]
         private InputActionReference focusAction;
 
+        [Header("Configs")]
+        [SerializeField]
+        private bool cancelActionOnRelease;
+
         private void Awake()
         {
             if (playerInput == null)
-                playerInput = PlayerInput.all.FirstOrDefault();
+                playerInput = PlayerInput.GetPlayerByIndex(playerIndex);
 
             SubscribeToInputActions();
         }
@@ -38,11 +46,21 @@ namespace Sentinal
         private void SubscribeToInputActions()
         {
             playerInput.actions.FindAction(cancelAction.action.id).performed += OnCancelPerformed;
+            playerInput.actions.FindAction(cancelAction.action.id).canceled += OnCancelCanceled;
             playerInput.actions.FindAction(focusAction.action.id).performed += OnFocusPerformed;
         }
 
-        private void OnCancelPerformed(InputAction.CallbackContext context) =>
-            SentinalManager.Instance.CloseCurrentView();
+        private void OnCancelPerformed(InputAction.CallbackContext context)
+        {
+            if (!cancelActionOnRelease)
+                SentinalManager.Instance.CloseCurrentView();
+        }
+
+        private void OnCancelCanceled(InputAction.CallbackContext context)
+        {
+            if (cancelActionOnRelease)
+                SentinalManager.Instance.CloseCurrentView();
+        }
 
         private void OnFocusPerformed(InputAction.CallbackContext context) =>
             SentinalManager.Instance.TrySelectCurrentView();
@@ -52,6 +70,7 @@ namespace Sentinal
             if (playerInput != null)
             {
                 playerInput.actions.FindAction(cancelAction.action.id).performed -= OnCancelPerformed;
+                playerInput.actions.FindAction(cancelAction.action.id).canceled -= OnCancelCanceled;
                 playerInput.actions.FindAction(focusAction.action.id).performed -= OnFocusPerformed;
             }
         }
