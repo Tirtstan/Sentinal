@@ -54,7 +54,7 @@ The central manager that handles all view/menu navigation logic and maintains th
 -   `OnRemove` - Fired when a view is removed from the stack.
 -   `OnSwitch` - Fired when switching between views.
 
-### `SentinalViewSelector` (Menu Component)
+### `ViewSelector` (Menu Component)
 
 Add this to any GameObject that represents a menu or navigable view. One that will be `SetActive(bool)`.
 
