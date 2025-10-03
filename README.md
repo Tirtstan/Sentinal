@@ -94,7 +94,7 @@ Automatically switches between action maps when a view opens/closes. **Requires 
 
 ```csharp
 // Your menu GameObject needs:
-// 1. SentinalViewSelector component
+// 1. ViewSelector component
 // 2. Enable/Disable the GameObject to open/close menus
 
 // Open a menu
@@ -140,13 +140,13 @@ private void Start()
     SentinalManager.OnSwitch += OnMenuSwitched;
 }
 
-private void OnMenuOpened(SentinalViewSelector view)
+private void OnMenuOpened(ViewSelector view)
 {
     Debug.Log($"Menu opened: {view.name}");
     // Update UI, play sounds, etc.
 }
 
-private void OnMenuSwitched(SentinalViewSelector from, SentinalViewSelector to)
+private void OnMenuSwitched(ViewSelector from, ViewSelector to)
 {
     Debug.Log($"Switched from {from?.name} to {to?.name}");
     // Handle transition effects
