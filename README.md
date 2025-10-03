@@ -7,6 +7,16 @@ A Unity package for managing hierarchical menu navigation with history tracking,
 
 ## 🚀 Quick Start
 
+### Install via git...
+
+**Package Manager > Add/Plus Symbol > Install package via git...**
+
+```console
+https://github.com/Tirtstan/Sentinal.git
+```
+
+### Set Up
+
 1. **Add the Core Manager**: Place the `SentinalManager` singleton component in your scene.
 2. **Setup Menu Views**: Add `ViewSelector` components to your active toggling menu GameObjects.
 3. **Optional Input Integration**: Add `InputSystemHandler` for re-selection and back tracking actions.
