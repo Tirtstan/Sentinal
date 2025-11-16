@@ -96,6 +96,8 @@ namespace Sentinal
             }
         }
 
+        public void SetFirstSelected(GameObject firstSelected) => this.firstSelected = firstSelected;
+
         public void SelectFirstSelected()
         {
             if (firstSelected == null)
