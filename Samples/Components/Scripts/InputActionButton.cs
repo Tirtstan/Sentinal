@@ -15,6 +15,16 @@ namespace Sentinal.Samples
         [SerializeField]
         private InputActionReference inputActionReference;
 
+        [Header("View")]
+        [SerializeField]
+        [Tooltip(
+            "If enabled, input actions will only work when the specified view is in focus. Prevents multiple action presses between complex view hierarchies."
+        )]
+        private bool inputWhenFocus;
+
+        [SerializeField]
+        private ViewSelector viewSelector;
+
         [Header("Configs")]
         [SerializeField]
         [Tooltip("This enables button visual feedback and re-selection.")]
@@ -24,13 +34,74 @@ namespace Sentinal.Samples
         [Tooltip("The button will be triggered on action release. If false, it will be triggered on action press.")]
         private bool triggerOnRelease;
         private EventSystem eventSystem;
+        private bool isSubscribed;
+
+        private void Awake()
+        {
+            if (inputWhenFocus && viewSelector == null)
+                Debug.LogWarning(
+                    "ViewSelector is required when 'Input When Focus' is enabled. Please assign a ViewSelector reference."
+                );
+        }
 
         private void OnEnable()
         {
+            eventSystem = EventSystem.current;
+
+            if (inputWhenFocus && viewSelector != null)
+                SentinalManager.OnSwitch += OnViewSwitch;
+
+            UpdateSubscription();
+        }
+
+        private void OnViewSwitch(ViewSelector previousView, ViewSelector newView)
+        {
+            UpdateSubscription();
+        }
+
+        private void UpdateSubscription()
+        {
+            bool shouldBeSubscribed = ShouldSubscribe();
+
+            if (shouldBeSubscribed && !isSubscribed)
+            {
+                Subscribe();
+            }
+            else if (!shouldBeSubscribed && isSubscribed)
+            {
+                Unsubscribe();
+            }
+        }
+
+        private bool ShouldSubscribe()
+        {
+            if (!inputWhenFocus || viewSelector == null)
+                return true;
+
+            if (SentinalManager.Instance == null)
+                return false;
+
+            return SentinalManager.Instance.CurrentView == viewSelector;
+        }
+
+        private void Subscribe()
+        {
+            if (inputActionReference == null || inputActionReference.action == null)
+                return;
+
             inputActionReference.action.performed += OnActionPerformed;
             inputActionReference.action.canceled += OnActionCanceled;
+            isSubscribed = true;
+        }
 
-            eventSystem = EventSystem.current;
+        private void Unsubscribe()
+        {
+            if (inputActionReference == null || inputActionReference.action == null)
+                return;
+
+            inputActionReference.action.performed -= OnActionPerformed;
+            inputActionReference.action.canceled -= OnActionCanceled;
+            isSubscribed = false;
         }
 
         private void OnActionPerformed(InputAction.CallbackContext context)
@@ -94,8 +165,10 @@ namespace Sentinal.Samples
 
         private void OnDisable()
         {
-            inputActionReference.action.performed -= OnActionPerformed;
-            inputActionReference.action.canceled -= OnActionCanceled;
+            Unsubscribe();
+
+            if (inputWhenFocus && viewSelector != null)
+                SentinalManager.OnSwitch -= OnViewSwitch;
         }
 
         private void Reset()
