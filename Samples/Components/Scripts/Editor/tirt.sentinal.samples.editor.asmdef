@@ -1,0 +1,19 @@
+{
+    "name": "tirt.sentinal.samples.editor",
+    "rootNamespace": "Sentinal.Samples.Editor",
+    "references": [
+        "tirt.sentinal.samples",
+        "tirt.sentinal",
+        "Unity.InputSystem",
+        "Unity.TextMeshPro"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
