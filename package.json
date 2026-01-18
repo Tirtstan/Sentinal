@@ -1,12 +1,12 @@
 {
     "name": "com.tirt.sentinal",
-    "version": "2.3.2",
+    "version": "3.0.0",
     "displayName": "Sentinal",
-    "description": "A package that provides a set of tools to manage menu/view navigation and selection in Unity.",
-    "unity": "2019.4",
+    "description": "A package that provides a set of tools to manage menu/view navigation and auto-selection in Unity.",
+    "unity": "2021.3",
     "unityRelease": "0f1",
     "documentationUrl": "https://github.com/Tirtstan/Sentinal/blob/main/README.md",
-    "changelogUrl": "https://github.com/Tirtstan/Sentinal/releases/latest",
+    "changelogUrl": "https://github.com/Tirtstan/Sentinal/blob/main/CHANGELOG.md",
     "licensesUrl": "https://github.com/Tirtstan/Sentinal/blob/main/LICENSE.md",
     "keywords": [
         "sentinal",
@@ -16,10 +16,10 @@
         "menu",
         "page",
         "panel",
-        "navigation",
-        "navigator",
         "input",
-        "stack"
+        "stack",
+        "history",
+        "input system"
     ],
     "author": {
         "name": "Tirt",
@@ -27,14 +27,10 @@
     },
     "samples": [
         {
-            "displayName": "Components",
-            "description": "Contains component scripts to manage UI elements. Tabbed view and input action button.",
-            "path": "Samples/Components"
-        },
-        {
             "displayName": "Examples",
-            "description": "Contains examples for how to use the Sentinal package.",
+            "description": "Contains examples for what and how to use the Sentinal package.",
             "path": "Samples/Examples"
         }
-    ]
+    ],
+    "_fingerprint": "8e667788fd7cbe5bb0a03aefe05a2b4adfab8d57"
 }

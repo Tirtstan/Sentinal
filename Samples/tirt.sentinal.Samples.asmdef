@@ -1,0 +1,17 @@
+{
+    "name": "tirt.sentinal.Samples",
+    "rootNamespace": "Sentinal.Samples",
+    "references": [
+        "tirt.sentinal",
+        "Unity.TextMeshPro"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

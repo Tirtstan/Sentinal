@@ -6,25 +6,29 @@ namespace Sentinal
     [AddComponentMenu("Sentinal/View Selector"), DisallowMultipleComponent]
     public class ViewSelector : MonoBehaviour, IViewSelector
     {
-        public GameObject FirstSelected => firstSelected;
-        public GameObject LastSelected => lastSelected;
-
         [Header("Components")]
         [SerializeField]
         [Tooltip("The first selected GameObject when selecting.")]
         private GameObject firstSelected;
 
-        [Header("Configs")]
         [Header("View")]
         [SerializeField]
-        [Tooltip(
-            "Treat this as the root view. This view is added to the view history, but is not closed automatically."
-        )]
-        private bool rootView;
+        [Tooltip("Priority for focus selection. Higher priority views get focus first. Equal priority uses recency.")]
+        private int priority = 0;
+
+        [SerializeField]
+        [Tooltip("Whether to track this view in the view history.")]
+        private bool trackView = true;
 
         [SerializeField]
         [Tooltip(
-            "Whether this view is exclusive. If true, it will close all other views (except root views) when opened."
+            "Prevents this view from being dismissed by the view dismissal input handler. This view is added to the view history, but is not closed automatically."
+        )]
+        private bool preventDismissal;
+
+        [SerializeField]
+        [Tooltip(
+            "Whether this view is exclusive. If true, it will close all other views (except dismissal-protected views) when opened."
         )]
         private bool exclusiveView;
 
@@ -33,10 +37,6 @@ namespace Sentinal
             "Whether this view hides all other views when opened. Unlike exclusive, this only hides them temporarily."
         )]
         private bool hideOtherViews;
-
-        [SerializeField]
-        [Tooltip("Whether to track this view in the view history.")]
-        private bool trackView = true;
 
         [Header("Selection")]
         [SerializeField]
@@ -52,6 +52,19 @@ namespace Sentinal
         [SerializeField]
         [Tooltip("Whether to remember the last selected GameObject.")]
         private bool rememberLastSelected = true;
+
+        public GameObject FirstSelected => firstSelected;
+        public GameObject LastSelected => lastSelected;
+        public int Priority => priority;
+        public bool PreventDismissal => preventDismissal;
+        public bool ExclusiveView => exclusiveView;
+        public bool HideOtherViews => hideOtherViews;
+        public bool TrackView => trackView;
+        public bool PreventSelection => preventSelection;
+        public bool AutoSelectOnEnable => autoSelectOnEnable;
+        public bool RememberLastSelected => rememberLastSelected;
+        public bool IsActive => gameObject.activeInHierarchy;
+
         private GameObject lastSelected;
         private bool isQuitting;
         private bool isBeingHidden;
@@ -75,6 +88,10 @@ namespace Sentinal
             if (autoSelectOnEnable)
                 Select();
         }
+
+        public void Open() => gameObject.SetActive(true);
+
+        public void Close() => gameObject.SetActive(false);
 
         private void OnSwitch(ViewSelector selector1, ViewSelector selector2)
         {
@@ -158,29 +175,9 @@ namespace Sentinal
         public void SetBeingHidden(bool hidden) => isBeingHidden = hidden;
 
         /// <summary>
-        /// Checks if this view is the root view.
-        /// The root view does not close automatically.
+        /// Checks if this view is currently focused.
         /// </summary>
-        /// <returns>If this is a root view.</returns>
-        public bool IsRootView() => rootView;
-
-        /// <summary>
-        /// Checks if this view is exclusive.
-        /// </summary>
-        /// <returns>If this is an exclusive view.</returns>
-        public bool IsExclusiveView() => exclusiveView;
-
-        /// <summary>
-        /// Checks if this view prevents selection.
-        /// </summary>
-        /// <returns>If this view prevents selection.</returns>
-        public bool HasPreventSelection() => preventSelection;
-
-        /// <summary>
-        /// Checks if this view hides other views.
-        /// </summary>
-        /// <returns>If this view hides other views.</returns>
-        public bool DoesHideOtherViews() => hideOtherViews;
+        public bool IsCurrent() => SentinalManager.Instance != null && SentinalManager.Instance.IsCurrent(this);
 
         /// <summary>
         /// Checks if the selectable GameObject is part of this selector's hierarchy.

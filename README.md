@@ -5,7 +5,7 @@ A Unity package for managing hierarchical menu navigation with history tracking,
 > [!NOTE]  
 > This does not replace **UGUI's navigation system.**
 
-## 🚀 Quick Start
+## QUICK START
 
 ### Install via git...
 
@@ -17,46 +17,56 @@ https://github.com/Tirtstan/Sentinal.git
 
 ### Set Up
 
-1. **Add the Core Manager**: Place the `SentinalManager` singleton component in your scene.
-2. **Setup Menu Views**: Add `ViewSelector` components to your active toggling menu GameObjects.
-3. **Optional Input Integration**: Add `InputSystemHandler` for re-selection and back tracking actions.
-4. **Optional Action Map Switching**: Add `InputActionSwitcher` for action map switching.
-
 > [!TIP]  
 > Use the provided **Sentinal** prefab from the samples for quick setup.
 
-> [!IMPORTANT]  
-> **The `SentinalManager` component is required for this package to work. Navigation is triggered by GameObject activation/deactivation (`OnEnable`/`OnDisable`).**
+1. **Add the Core Manager**: Place the `SentinalManager` singleton component in your scene.
+2. **(Input System) Add helpers**: On the same GameObject as `SentinalManager`, add:
+    - `ViewDismissalInputHandler` (Cancel/Back + refocus)
+    - `ActionMapManager` (optional, for action map overlays)
+3. **Setup Menu Views**: Add `ViewSelector` components to your active toggling menu GameObjects.
+4. **(Input System) Per-view input**: Add `ViewInputSystemHandler` alongside `ViewSelector` on views that need input gating and/or action map changes.
 
-## ✨ Features
+> [!NOTE]  
+> Input System features require the Unity Input System package in your project.
+
+> [!IMPORTANT]  
+> **The `SentinalManager` component is required for this package to work. View tracking is triggered by GameObject activation/deactivation (`OnEnable`/`OnDisable`).**
+
+## FEATURES
 
 ### Core Navigation
 
 -   **Menu/View Tracking**: Navigate through multiple menus with automatic history tracking.
+-   **Priority-Based Focus**: Views are focused based on priority (higher priority first), with recency as tie-breaker.
 -   **UI Selection**: Auto-selection of UI elements with memory of last selected items.
--   **Root View Support**: Persistent root menus that stay in history but don't auto-close.
--   **Exclusive Views**: Views that close all other menus when opened (excluding root views).
+-   **Dismissal-Protected Views**: Views can be tracked but not auto-closed (`preventDismissal`).
+-   **Exclusive Views**: Views that close all other views (except dismissal-protected views) when opened.
 
 ### Input System Integration
 
--   **Action Map Switching**: Automatic switching between Player/UI (or custom) action maps.
+-   **Action Map Overlays**: Intelligent action map management that tracks enabled/disabled maps per view.
+-   **Per-View Input Gating**: Enable/disable input for specific views based on focus.
+-   **Single or Multi-Player**: Support for single PlayerInput or apply to all players simultaneously.
+-   **Efficient Switching**: Recomputes action maps when switching between menus, not just on close.
 -   **Configurable Actions**: Customisable input actions for canceling and re-selecting.
 
-## 🔧 Core Components
+## CORE COMPONENTS
 
 ### `SentinalManager` (Singleton Manager)
 
 The central manager that handles all view/menu navigation logic and maintains the view stack.
 
-<img src="Documentation/Images/SentinalInspector.png" alt="Sentinal Manager component."/>
+<img src="Documentation/Images/SentinalInspector.png" width="500" alt="Sentinal Manager component."/>
 
 **Public API:**
 
--   `CloseCurrentView()` - Close the topmost view in the stack.
--   `CloseAllViews()` - Close all views except root views.
--   `TrySelectCurrentView()` - Attempt to select the current view's UI element.
+-   `CloseCurrentView()` - Close the focused view in the stack.
+-   `CloseAllViews()` - Close all views (optionally excluding dismissal-protected views).
+-   `TrySelectCurrentView()` - Attempt to select the focused view's UI element.
 -   `AnyViewsOpen` - Check if any views are currently open.
--   `CurrentView` - Get the currently active view selector.
+-   `CurrentView` - Get the currently focused view selector (priority + recency).
+-   `MostRecentView` - Get the most recently opened view selector.
 
 **Events:**
 
@@ -68,16 +78,17 @@ The central manager that handles all view/menu navigation logic and maintains th
 
 Add this to any GameObject that represents a menu or navigable view. One that will be `SetActive(bool)`.
 
-<img src="Documentation/Images/ViewSelector.png" alt="View Selector component."/>
+<img src="Documentation/Images/ViewSelector.png" width="500" alt="View Selector component."/>
 
 #### **Properties:**
 
 ##### **View**
 
+-   `priority` - Focus priority (higher values get focus first; equal priority uses recency).
 -   `firstSelected` - The GameObject to auto-select when this view becomes active.
--   `rootView` - Treat as root view (added to history but never closed automatically).
--   `exclusiveView` - Close all other views (except root views) when this view opens.
--   `hideAllViews` - Hides all other views when opened. Unlike exclusive, this only hides them temporarily.
+-   `preventDismissal` - Track this view, but prevent it from being dismissed by `ViewDismissalInputHandler` or `CloseCurrentView()`.
+-   `exclusiveView` - Close all other views (except dismissal-protected views) when this view opens.
+-   `hideOtherViews` - Temporarily hide other views while this view is open.
 -   `trackView` - Whether to include this view in the navigation history stack.
 
 ##### **Selection**
@@ -86,19 +97,45 @@ Add this to any GameObject that represents a menu or navigable view. One that wi
 -   `autoSelectOnEnable` - Automatically select the first element when the view is enabled.
 -   `rememberLastSelected` - Remember and restore the last selected UI element.
 
-### `InputSystemHandler` (Optional Input Manager)
+##### **Input**
 
-Handles Input System integration for input navigation. **Requires `SentinalManager` component.**
+-   (Input System) Add `ViewInputSystemHandler` on the same GameObject to gate input and/or apply action maps.
 
-<img src="Documentation/Images/Input.png" alt="Input System Handler component."/>
+### `ViewDismissalInputHandler` (Input System: Dismiss + Refocus)
 
-### `InputActionSwitcher` (Auto Action Map Switching)
+<img src="Documentation/Images/ViewDismissal.png" width="500" alt="View Dismissal Input Handler component."/>
 
-Automatically switches between action maps when a view opens/closes. **Requires `ViewSelector` component.**
 
-<img src="Documentation/Images/InputSwitcher.png" alt="Input Action Switcher component."/>
+Listens for two Input System actions:
 
-## 🎯 Usage Examples
+- Cancel/Back → `SentinalManager.Instance.CloseCurrentView()`
+- Focus → `SentinalManager.Instance.TrySelectCurrentView()`
+
+Recommended placement: **same GameObject as `SentinalManager`**.
+
+### `ViewInputSystemHandler` (Input System: Per-View Input + Action Maps)
+
+<img src="Documentation/Images/ViewInput.png" width="500" alt="View Input System Handler component."/>
+
+
+Per-view handler that can:
+
+- Enable/disable “input enabled” state depending on whether the view is the current view (`InputOnlyWhenCurrent`).
+- (Optionally) Apply action map changes when enabled or disabled.
+
+Key fields:
+
+- `inputOnlyWhenCurrent` (default true)
+- `viewSelector` (optional, but required if `inputOnlyWhenCurrent` is true)
+- `playerInput` / `playerIndex`
+- `applyToAllPlayers`
+- `enableActionMaps` / `disableActionMaps`
+
+### `ActionMapManager` (Input System: Global Action Map Coordinator)
+
+Singleton that tracks and manages action map overlays across views using `ViewInputSystemHandler` configuration. Recomputes on view focus changes and restores previous state correctly.
+
+## USAGE EXAMPLES
 
 ### Basic Menu Setup
 
@@ -109,6 +146,8 @@ Automatically switches between action maps when a view opens/closes. **Requires 
 
 // Open a menu
 menuGameObject.SetActive(true); // Automatically tracked by SentinalManager (if ViewSelector is present)
+// OR
+viewSelector.Open();
 
 // Close current menu
 SentinalManager.Instance.CloseCurrentView();
@@ -163,25 +202,29 @@ private void OnMenuSwitched(ViewSelector from, ViewSelector to)
 }
 ```
 
-## 📋 Requirements
+## REQUIREMENTS
 
--   **Unity 2019.4** or later
+-   **Unity 2021.3** or later
 -   **Input System package** (optional, for input handling features)
 -   **TextMeshPro** (for sample scenes)
 
-## 🐛 Debugging
+## DEBUGGING
 
 ### Runtime Inspector
 
 The custom editor shows real-time debugging information:
 
--   Current view index in the navigation stack.
--   Whether the view is currently active.
--   View hierarchy visualization.
+-   **SentinalManager**: Shows focused view vs most recent view, view list with priority and input state.
+-   **ViewSelector**: Shows priority, history index, focus state, input enabled, connected PlayerInput.
+-   **ViewInputSystemHandler**: Shows input enabled state and action map configuration (Input System).
 
-## 📝 Best Practices
+## BEST PRACTICES
 
 1. **Always use GameObject activation (`SetActive(bool)`)** for menu open/close operations.
 2. **Use `ICloseableView`** for menus that need custom close animations or specific menu closure.
-3. **Use Root Views** for persistent UI elements like HUDs or a main menu screen.
+3. **Use `preventDismissal`** for persistent UI elements like HUDs or a main menu screen.
 4. **Use Exclusive Views** for modal dialogs or full-screen overlays.
+5. **Set Priority** on views that should always be focused when open (e.g., error dialogs).
+6. **Use `ViewInputSystemHandler.InputOnlyWhenCurrent`** to prevent input conflicts between multiple open views.
+7. **Configure Action Maps** per view via `ViewInputSystemHandler` to enable both UI and gameplay maps simultaneously when needed (e.g., touch controls).
+

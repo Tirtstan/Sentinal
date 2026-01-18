@@ -1,0 +1,19 @@
+{
+    "name": "tirt.sentinal.InputSystem.Editor",
+    "rootNamespace": "Sentinal",
+    "references": [
+        "tirt.sentinal",
+        "tirt.sentinal.Editor",
+        "tirt.sentinal.InputSystem",
+        "Unity.InputSystem"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
