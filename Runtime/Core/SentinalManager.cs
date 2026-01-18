@@ -32,10 +32,17 @@ namespace Sentinal
         private readonly StringBuilder viewInfoBuilder = new();
 
         /// <summary>
-        /// Gets the last view in the history.
+        /// Gets the most recently opened view in the history.
         /// Returns null if no views are open.
         /// </summary>
-        public ViewSelector CurrentView => viewHistory.Count > 0 ? viewHistory.Last.Value : null;
+        public ViewSelector MostRecentView => viewHistory.Count > 0 ? viewHistory.Last.Value : null;
+
+        /// <summary>
+        /// Gets the focused view based on priority (highest first) and then recency.
+        /// Returns null if no views are open.
+        /// </summary>
+        public ViewSelector CurrentView => GetCurrentView();
+
         public bool AnyViewsOpen => viewHistory.Count > 0;
         public int ViewCount => viewHistory.Count;
 
@@ -55,10 +62,13 @@ namespace Sentinal
             if (view == null || viewHistory.Contains(view))
                 return;
 
-            ViewSelector previousView = CurrentView;
+            ViewSelector previousFocusedView = CurrentView;
             viewHistory.AddLast(view);
             OnAdd?.Invoke(view);
-            OnSwitch?.Invoke(previousView, view);
+
+            ViewSelector newFocusedView = CurrentView;
+            if (previousFocusedView != newFocusedView)
+                OnSwitch?.Invoke(previousFocusedView, newFocusedView);
         }
 
         public void Remove(ViewSelector view)
@@ -66,42 +76,97 @@ namespace Sentinal
             if (view == null)
                 return;
 
-            bool wasCurrentView = view == CurrentView;
+            ViewSelector previousFocusedView = CurrentView;
+            bool wasCurrentView = view == previousFocusedView;
+
             viewHistory.Remove(view);
             OnRemove?.Invoke(view);
 
-            if (wasCurrentView && CurrentView != null)
+            ViewSelector newFocusedView = CurrentView;
+
+            if (wasCurrentView && newFocusedView != null)
+                newFocusedView.Select();
+
+            if (previousFocusedView != newFocusedView)
+                OnSwitch?.Invoke(previousFocusedView, newFocusedView);
+        }
+
+        /// <summary>
+        /// Checks if the given view is the current view.
+        /// </summary>
+        /// <param name="view">The view to check.</param>
+        /// <returns>True if the view is the current view, false otherwise.</returns>
+        public bool IsCurrent(ViewSelector view) => CurrentView == view;
+
+        /// <summary>
+        /// Gets the current view based on priority (highest first) and recency (tie-breaker).
+        /// When priorities are tied, the most recently opened view is selected.
+        /// </summary>
+        /// <returns>The current view.</returns>
+        public ViewSelector GetCurrentView()
+        {
+            if (viewHistory.Count == 0)
+                return null;
+
+            ViewSelector focused = null;
+            int maxPriority = int.MinValue;
+
+            LinkedListNode<ViewSelector> node = viewHistory.Last;
+            while (node != null)
             {
-                if (CurrentView.TryGetComponent(out IViewSelector selector))
-                    selector.Select();
+                ViewSelector view = node.Value;
+                if (view == null)
+                {
+                    node = node.Previous;
+                    continue;
+                }
+
+                int priority = view.Priority;
+                if (priority > maxPriority)
+                {
+                    maxPriority = priority;
+                    focused = view;
+                }
+
+                node = node.Previous;
             }
 
-            OnSwitch?.Invoke(view, CurrentView);
+            return focused;
         }
 
         public void CloseCurrentView()
         {
-            if (CurrentView == null || CurrentView.IsRootView())
+            if (CurrentView == null || CurrentView.PreventDismissal)
                 return;
 
-            if (CurrentView.TryGetComponent(out ICloseableView closeableView))
-                closeableView.Close();
-            else
-                CurrentView.gameObject.SetActive(false);
+            CloseView(CurrentView);
         }
 
-        public void CloseAllViews(bool includeRoots = false)
+        /// <summary>
+        /// Closes all views..
+        /// </summary>
+        /// <param name="excludePreventDismissalViews">If true, views that prevent dismissal will not be closed.</param>
+        public void CloseAllViews(bool excludePreventDismissalViews = false)
         {
             var viewsToClose = new List<ViewSelector>(viewHistory);
             foreach (var view in viewsToClose)
             {
-                if (view.IsRootView() && !includeRoots)
+                if (view.PreventDismissal && excludePreventDismissalViews)
                     continue;
 
-                if (view.TryGetComponent(out ICloseableView closeableView))
-                    closeableView.Close();
-                else
-                    view.gameObject.SetActive(false);
+                CloseView(view);
+            }
+        }
+
+        private void CloseView(ViewSelector view)
+        {
+            if (view.TryGetComponent(out ICloseableView closeableView))
+            {
+                closeableView.Close();
+            }
+            else
+            {
+                view.Close();
             }
         }
 
@@ -137,7 +202,7 @@ namespace Sentinal
 
         public bool TrySelectCurrentView()
         {
-            if (CurrentView == null || CurrentView.HasPreventSelection())
+            if (CurrentView == null || CurrentView.PreventSelection)
                 return false;
 
             if (CurrentView.TryGetComponent(out IViewSelector selector))

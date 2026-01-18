@@ -1,0 +1,16 @@
+{
+    "name": "tirt.sentinal.InputSystem",
+    "rootNamespace": "Sentinal",
+    "references": [
+        "tirt.sentinal",
+        "Unity.InputSystem",
+        "Unity.TextMeshPro"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

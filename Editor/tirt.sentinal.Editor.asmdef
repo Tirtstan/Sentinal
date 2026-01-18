@@ -2,7 +2,9 @@
     "name": "tirt.sentinal.Editor",
     "rootNamespace": "Sentinal",
     "references": [
-        "tirt.sentinal"
+        "tirt.sentinal",
+        "tirt.sentinal.InputSystem",
+        "Unity.InputSystem"
     ],
     "includePlatforms": [
         "Editor"

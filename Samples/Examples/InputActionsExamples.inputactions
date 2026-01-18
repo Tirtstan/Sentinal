@@ -580,13 +580,40 @@
                     "initialStateCheck": false
                 },
                 {
-                    "name": "ToggleMenu",
+                    "name": "OpenMenu1",
                     "type": "Button",
-                    "id": "052179df-13b9-4824-b259-8785ec25e4fa",
+                    "id": "5770ed78-9f16-4e14-805f-0194cfd09864",
                     "expectedControlType": "",
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
+                },
+                {
+                    "name": "OpenMenu2",
+                    "type": "Button",
+                    "id": "096ca475-f1a0-4ad5-9a8c-c5b1fd73148d",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "OpenMenu3",
+                    "type": "Button",
+                    "id": "6a20f117-a002-496d-83d1-34126045fb1f",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "TabSwitch",
+                    "type": "Value",
+                    "id": "a4d2d85a-e6b9-4eca-af2e-1544a45b2a93",
+                    "expectedControlType": "Axis",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": true
                 }
             ],
             "bindings": [
@@ -1043,47 +1070,102 @@
                 },
                 {
                     "name": "",
-                    "id": "a58a7799-1306-48d3-93fb-e12126f353c9",
+                    "id": "8cb5d555-29a3-40d4-803d-9e09d1085164",
                     "path": "<Keyboard>/1",
                     "interactions": "",
-                    "processors": "Scale",
+                    "processors": "",
                     "groups": ";Keyboard&Mouse",
-                    "action": "ToggleMenu",
+                    "action": "OpenMenu1",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },
                 {
                     "name": "",
-                    "id": "13341625-9972-49b5-9106-90a880d53388",
+                    "id": "b12234ec-c15f-4d45-8e9b-2aab9c852a90",
                     "path": "<Keyboard>/2",
                     "interactions": "",
-                    "processors": "Scale(factor=2)",
+                    "processors": "",
                     "groups": ";Keyboard&Mouse",
-                    "action": "ToggleMenu",
+                    "action": "OpenMenu2",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },
                 {
                     "name": "",
-                    "id": "af07775e-d1c8-4172-8d4d-35014f90f6f7",
-                    "path": "<Gamepad>/leftTrigger",
+                    "id": "91c017dc-dd92-497b-9300-d39dc629c5c2",
+                    "path": "<Keyboard>/3",
                     "interactions": "",
-                    "processors": "Scale",
-                    "groups": ";Gamepad",
-                    "action": "ToggleMenu",
+                    "processors": "",
+                    "groups": ";Keyboard&Mouse",
+                    "action": "OpenMenu3",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },
                 {
-                    "name": "",
-                    "id": "602a95d3-89a6-4eb8-997c-648a8e7bc557",
-                    "path": "<Gamepad>/rightTrigger",
+                    "name": "QE",
+                    "id": "353bc741-a081-4330-9c3c-45b324bd64fd",
+                    "path": "1DAxis",
                     "interactions": "",
-                    "processors": "Scale(factor=2)",
-                    "groups": ";Gamepad",
-                    "action": "ToggleMenu",
-                    "isComposite": false,
+                    "processors": "",
+                    "groups": "",
+                    "action": "TabSwitch",
+                    "isComposite": true,
                     "isPartOfComposite": false
+                },
+                {
+                    "name": "negative",
+                    "id": "2698aa95-341a-4139-b912-a90c7b9ee6d8",
+                    "path": "<Keyboard>/q",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": ";Keyboard&Mouse",
+                    "action": "TabSwitch",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "positive",
+                    "id": "e7629f8a-8aaa-4a48-82b1-11abee72ccc7",
+                    "path": "<Keyboard>/e",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": ";Keyboard&Mouse",
+                    "action": "TabSwitch",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "Shoulders",
+                    "id": "70066686-811b-4c82-983d-d323cfcaf6e3",
+                    "path": "1DAxis",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "TabSwitch",
+                    "isComposite": true,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "negative",
+                    "id": "8b0be01e-4644-491d-a951-3ef7340a54fc",
+                    "path": "<Gamepad>/leftShoulder",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": ";Gamepad",
+                    "action": "TabSwitch",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "positive",
+                    "id": "a48fe776-788a-42bf-9340-79c1c7ae9f96",
+                    "path": "<Gamepad>/rightShoulder",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": ";Gamepad",
+                    "action": "TabSwitch",
+                    "isComposite": false,
+                    "isPartOfComposite": true
                 }
             ]
         }
