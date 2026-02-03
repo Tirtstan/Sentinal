@@ -69,8 +69,8 @@ namespace Sentinal.Editor
                             EditorGUILayout.LabelField($"{namePrefix}{view.name}{parentName}", titleStyle);
 
                             string properties = "";
-                            if (view.PreventDismissal)
-                                properties += "Dismissal-Protected ";
+                            if (view.RootView)
+                                properties += "Root ";
                             if (view.ExclusiveView)
                                 properties += "Exclusive ";
                             if (view.PreventSelection)
@@ -148,7 +148,7 @@ namespace Sentinal.Editor
             EditorGUILayout.Space(4);
             BeginResponsiveHorizontal(350f);
 
-            GUI.enabled = manager.CurrentView && !manager.CurrentView.PreventDismissal;
+            GUI.enabled = manager.CurrentView && !manager.CurrentView.RootView;
             if (GUILayout.Button("Close Current", GUILayout.Height(24)))
                 manager.CloseCurrentView();
 

@@ -1,9 +1,5 @@
 using UnityEditor;
 using UnityEngine;
-#if ENABLE_INPUT_SYSTEM
-using UnityEngine.InputSystem;
-using Sentinal.InputSystem;
-#endif
 
 namespace Sentinal.Editor
 {

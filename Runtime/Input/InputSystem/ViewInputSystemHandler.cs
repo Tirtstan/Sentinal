@@ -45,12 +45,12 @@ namespace Sentinal.InputSystem
         private bool applyToAllPlayers;
 
         [SerializeField]
-        [Tooltip("Action maps to enable when this handler is enabled.")]
-        private string[] enableActionMaps = new string[] { "UI" };
+        [Tooltip("Action maps to configure when this handler is enabled.")]
+        private ActionMapConfig[] onEnabledActionMaps = new[] { new ActionMapConfig("UI", true) };
 
         [SerializeField]
-        [Tooltip("Action maps to disable when this handler is enabled.")]
-        private string[] disableActionMaps = new string[0];
+        [Tooltip("Action maps to configure when this handler is disabled.")]
+        private ActionMapConfig[] onDisabledActionMaps = Array.Empty<ActionMapConfig>();
 
         private bool inputEnabled = true;
         private bool hasAppliedActionMaps = false;
@@ -162,16 +162,16 @@ namespace Sentinal.InputSystem
 
         public int GetPlayerIndex() => playerIndex;
 
-        public string[] GetEnableActionMaps() => enableActionMaps;
+        public ActionMapConfig[] GetOnEnabledActionMaps() => onEnabledActionMaps;
 
-        public string[] GetDisableActionMaps() => disableActionMaps;
+        public ActionMapConfig[] GetOnDisabledActionMaps() => onDisabledActionMaps;
 
         /// <summary>
         /// Checks if this handler has any action maps configured.
         /// </summary>
         public bool HasActionMapsConfigured() =>
-            (enableActionMaps != null && enableActionMaps.Length > 0)
-            || (disableActionMaps != null && disableActionMaps.Length > 0);
+            (onEnabledActionMaps != null && onEnabledActionMaps.Length > 0)
+            || (onDisabledActionMaps != null && onDisabledActionMaps.Length > 0);
 
         /// <summary>
         /// Checks if there's a ViewSelector on the same GameObject.

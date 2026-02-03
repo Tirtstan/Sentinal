@@ -23,12 +23,12 @@ namespace Sentinal
         public int Priority { get; }
 
         /// <summary>
-        /// Whether to prevent dismissal of this view.
+        /// Whether this view is a root view (not auto-closed, special permissions around being closed; can still be hidden).
         /// </summary>
-        public bool PreventDismissal { get; }
+        public bool RootView { get; }
 
         /// <summary>
-        /// Whether this view is exclusive. If true, it will close all other views (except dismissal-protected views) when opened.
+        /// Whether this view is exclusive. If true, it will close all other views (except root views) when opened.
         /// </summary>
         public bool ExclusiveView { get; }
 

@@ -43,7 +43,15 @@ namespace Sentinal
         /// </summary>
         public ViewSelector CurrentView => GetCurrentView();
 
+        /// <summary>
+        /// Checks if any views are open.
+        /// </summary>
         public bool AnyViewsOpen => viewHistory.Count > 0;
+
+        /// <summary>
+        /// Checks if any views are open that are not root views.
+        /// </summary>
+        public bool AnyNonRootViewsOpen => viewHistory.Any(view => !view.RootView);
         public int ViewCount => viewHistory.Count;
 
         private void Awake()
@@ -136,22 +144,22 @@ namespace Sentinal
 
         public void CloseCurrentView()
         {
-            if (CurrentView == null || CurrentView.PreventDismissal)
+            if (CurrentView == null || CurrentView.RootView)
                 return;
 
             CloseView(CurrentView);
         }
 
         /// <summary>
-        /// Closes all views..
+        /// Closes all views.
         /// </summary>
-        /// <param name="excludePreventDismissalViews">If true, views that prevent dismissal will not be closed.</param>
-        public void CloseAllViews(bool excludePreventDismissalViews = false)
+        /// <param name="excludeRootViews">If true, root views will not be closed.</param>
+        public void CloseAllViews(bool excludeRootViews = false)
         {
             var viewsToClose = new List<ViewSelector>(viewHistory);
             foreach (var view in viewsToClose)
             {
-                if (view.PreventDismissal && excludePreventDismissalViews)
+                if (view.RootView && excludeRootViews)
                     continue;
 
                 CloseView(view);

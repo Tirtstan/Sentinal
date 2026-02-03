@@ -14,9 +14,8 @@ namespace Sentinal.Editor
         private SerializedProperty playerInputProperty;
         private SerializedProperty playerIndexProperty;
         private SerializedProperty applyToAllPlayersProperty;
-        private SerializedProperty enableActionMapsProperty;
-        private SerializedProperty disableActionMapsProperty;
-        private bool showActionMapsFoldout = false;
+        private SerializedProperty onEnabledActionMapsProperty;
+        private SerializedProperty onDisabledActionMapsProperty;
 
         private void OnEnable()
         {
@@ -25,8 +24,8 @@ namespace Sentinal.Editor
             playerInputProperty = serializedObject.FindProperty("playerInput");
             playerIndexProperty = serializedObject.FindProperty("playerIndex");
             applyToAllPlayersProperty = serializedObject.FindProperty("applyToAllPlayers");
-            enableActionMapsProperty = serializedObject.FindProperty("enableActionMaps");
-            disableActionMapsProperty = serializedObject.FindProperty("disableActionMaps");
+            onEnabledActionMapsProperty = serializedObject.FindProperty("onEnabledActionMaps");
+            onDisabledActionMapsProperty = serializedObject.FindProperty("onDisabledActionMaps");
         }
 
         public override void OnInspectorGUI()
@@ -47,8 +46,8 @@ namespace Sentinal.Editor
 
             EditorGUILayout.Space(2);
             EditorGUILayout.PropertyField(applyToAllPlayersProperty);
-            EditorGUILayout.PropertyField(enableActionMapsProperty);
-            EditorGUILayout.PropertyField(disableActionMapsProperty);
+            EditorGUILayout.PropertyField(onEnabledActionMapsProperty, true);
+            EditorGUILayout.PropertyField(onDisabledActionMapsProperty, true);
 
             serializedObject.ApplyModifiedProperties();
 
@@ -64,10 +63,11 @@ namespace Sentinal.Editor
 
             DrawInfoBox(() =>
             {
-                var enableMaps = handler.GetEnableActionMaps();
-                var disableMaps = handler.GetDisableActionMaps();
+                var onEnabledMaps = handler.GetOnEnabledActionMaps();
+                var onDisabledMaps = handler.GetOnDisabledActionMaps();
                 bool hasConfig =
-                    (enableMaps != null && enableMaps.Length > 0) || (disableMaps != null && disableMaps.Length > 0);
+                    (onEnabledMaps != null && onEnabledMaps.Length > 0)
+                    || (onDisabledMaps != null && onDisabledMaps.Length > 0);
 
                 string infoLine = "";
 
@@ -89,18 +89,47 @@ namespace Sentinal.Editor
                 if (hasConfig)
                 {
                     string configInfo = "";
-                    if (enableMaps != null && enableMaps.Length > 0)
-                        configInfo += $"Enable: {string.Join(", ", enableMaps)}";
-                    if (disableMaps != null && disableMaps.Length > 0)
-                    {
-                        if (configInfo.Length > 0)
-                            configInfo += ", ";
-                        configInfo += $"Disable: {string.Join(", ", disableMaps)}";
-                    }
-                    infoLine += $"  |  Config: {configInfo}";
-                }
 
-                EditorGUILayout.BeginHorizontal();
+                    if (onEnabledMaps != null && onEnabledMaps.Length > 0)
+                    {
+                        var parts = new System.Collections.Generic.List<string>();
+                        foreach (var cfg in onEnabledMaps)
+                        {
+                            if (cfg == null || string.IsNullOrEmpty(cfg.actionMapName))
+                                continue;
+
+                            parts.Add($"{cfg.actionMapName} ({(cfg.enable ? "Enable" : "Disable")})");
+                        }
+
+                        if (parts.Count > 0)
+                        {
+                            configInfo += $"On Enabled: {string.Join(", ", parts)}";
+                        }
+                    }
+
+                    if (onDisabledMaps != null && onDisabledMaps.Length > 0)
+                    {
+                        var parts = new System.Collections.Generic.List<string>();
+                        foreach (var cfg in onDisabledMaps)
+                        {
+                            if (cfg == null || string.IsNullOrEmpty(cfg.actionMapName))
+                                continue;
+
+                            parts.Add($"{cfg.actionMapName} ({(cfg.enable ? "Enable" : "Disable")})");
+                        }
+
+                        if (parts.Count > 0)
+                        {
+                            if (configInfo.Length > 0)
+                                configInfo += "  |  ";
+
+                            configInfo += $"On Disabled: {string.Join(", ", parts)}";
+                        }
+                    }
+
+                    if (!string.IsNullOrEmpty(configInfo))
+                        infoLine += $"  |  Config: {configInfo}";
+                }
 
                 // Apply color style to the whole line if input is enabled
                 var statusStyle = new GUIStyle(EditorStyles.miniLabel);
@@ -108,36 +137,8 @@ namespace Sentinal.Editor
                 {
                     statusStyle.normal.textColor = SentinalEditorColors.AccentColor;
                 }
+
                 EditorGUILayout.LabelField(infoLine, statusStyle);
-
-                // Action maps foldout (only show if we have a player input and config)
-                if (playerInput != null && hasConfig && playerInput.actions != null)
-                {
-                    showActionMapsFoldout = EditorGUILayout.Foldout(
-                        showActionMapsFoldout,
-                        "",
-                        true,
-                        new GUIStyle { fixedWidth = 15 }
-                    );
-                }
-                EditorGUILayout.EndHorizontal();
-
-                // Expanded action maps list
-                if (showActionMapsFoldout && playerInput != null && playerInput.actions != null)
-                {
-                    EditorGUILayout.Space(2);
-                    EditorGUI.indentLevel++;
-                    foreach (var map in playerInput.actions.actionMaps)
-                    {
-                        var mapStyle = new GUIStyle(EditorStyles.miniLabel);
-                        if (map.enabled)
-                        {
-                            mapStyle.normal.textColor = SentinalEditorColors.AccentColor;
-                        }
-                        EditorGUILayout.LabelField($"{(map.enabled ? "✓" : "○")} {map.name}", mapStyle);
-                    }
-                    EditorGUI.indentLevel--;
-                }
             });
 
             if (Application.isPlaying)

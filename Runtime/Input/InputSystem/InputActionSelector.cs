@@ -34,6 +34,8 @@ namespace Sentinal.InputSystem
             if (playerInput == null || playerInput.actions == null)
                 return null;
 
+            EnsureSupportedNotificationBehavior(playerInput);
+
             InputAction inputAction;
             if (useActionName)
             {
@@ -52,6 +54,33 @@ namespace Sentinal.InputSystem
 
             inputAction?.Enable();
             return inputAction;
+        }
+
+        /// <summary>
+        /// Ensures the PlayerInput.notificationBehavior is set to a mode supported by Sentinal
+        /// (InvokeCSharpEvents or InvokeUnityEvents). If it is set to an unsupported mode
+        /// (SendMessages/BroadcastMessages), it will be changed to InvokeCSharpEvents at runtime
+        /// and a warning will be logged so the user can fix the setting in the inspector.
+        /// </summary>
+        private static void EnsureSupportedNotificationBehavior(PlayerInput playerInput)
+        {
+            if (playerInput == null)
+                return;
+
+            var behavior = playerInput.notificationBehavior;
+
+            if (behavior == PlayerNotifications.InvokeCSharpEvents || behavior == PlayerNotifications.InvokeUnityEvents)
+                return;
+
+            var previous = behavior;
+            playerInput.notificationBehavior = PlayerNotifications.InvokeCSharpEvents;
+
+            Debug.LogWarning(
+                $"InputActionSelector: PlayerInput.notificationBehavior was '{previous}' and was automatically changed "
+                    + $"to '{PlayerNotifications.InvokeCSharpEvents}' for Sentinal input integration. "
+                    + "Please update this setting on the PlayerInput component in the inspector to avoid runtime changes.",
+                playerInput
+            );
         }
 
         /// <summary>
