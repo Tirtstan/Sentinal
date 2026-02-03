@@ -135,22 +135,54 @@ namespace Sentinal.InputSystem.Components
 
         /// <summary>
         /// Subscribes to PlayerInput events.
-        /// Override to subscribe to specific PlayerInput events (e.g., onControlsChanged).
+        /// Uses C# events when notificationBehavior is InvokeCSharpEvents and UnityEvents when it is InvokeUnityEvents.
+        /// If notificationBehavior is set to an unsupported mode (SendMessages/BroadcastMessages), it will be changed
+        /// to InvokeCSharpEvents and a warning will be logged so the user can fix the setting in the inspector.
         /// </summary>
         protected virtual void SubscribeToPlayerInput()
         {
-            if (playerInput != null)
+            if (playerInput == null)
+                return;
+
+            var behavior = playerInput.notificationBehavior;
+
+            if (behavior != PlayerNotifications.InvokeCSharpEvents && behavior != PlayerNotifications.InvokeUnityEvents)
+            {
+                var previous = behavior;
+                playerInput.notificationBehavior = PlayerNotifications.InvokeCSharpEvents;
+
+                Debug.LogWarning(
+                    $"{GetType().Name}: PlayerInput.notificationBehavior was '{previous}' and was automatically "
+                        + $"changed to '{PlayerNotifications.InvokeCSharpEvents}' for Sentinal input integration. "
+                        + "Please update this setting on the PlayerInput component in the inspector to avoid runtime changes.",
+                    playerInput
+                );
+
+                behavior = playerInput.notificationBehavior;
+            }
+
+            if (behavior == PlayerNotifications.InvokeCSharpEvents)
+            {
                 playerInput.onControlsChanged += OnControlsChanged;
+            }
+            else if (behavior == PlayerNotifications.InvokeUnityEvents)
+            {
+                playerInput.controlsChangedEvent.AddListener(OnControlsChanged);
+            }
         }
 
         /// <summary>
         /// Unsubscribes from PlayerInput events.
-        /// Override to unsubscribe from specific PlayerInput events.
         /// </summary>
         protected virtual void UnsubscribeFromPlayerInput()
         {
-            if (playerInput != null)
-                playerInput.onControlsChanged -= OnControlsChanged;
+            if (playerInput == null)
+                return;
+
+            playerInput.onControlsChanged -= OnControlsChanged;
+
+            if (playerInput.notificationBehavior == PlayerNotifications.InvokeUnityEvents)
+                playerInput.controlsChangedEvent.RemoveListener(OnControlsChanged);
         }
 
         /// <summary>

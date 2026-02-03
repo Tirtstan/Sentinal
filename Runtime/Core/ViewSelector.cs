@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.Serialization;
 
 namespace Sentinal
 {
@@ -22,13 +23,14 @@ namespace Sentinal
 
         [SerializeField]
         [Tooltip(
-            "Prevents this view from being dismissed by the view dismissal input handler. This view is added to the view history, but is not closed automatically."
+            "Root view: does not get auto-closed and has special permissions around being closed (e.g. by dismissal input). Can still be hidden. Use for main screens like main menu or HUD."
         )]
-        private bool preventDismissal;
+        [FormerlySerializedAs("preventDismissal")]
+        private bool rootView;
 
         [SerializeField]
         [Tooltip(
-            "Whether this view is exclusive. If true, it will close all other views (except dismissal-protected views) when opened."
+            "Whether this view is exclusive. If true, it will close all other views (except root views) when opened."
         )]
         private bool exclusiveView;
 
@@ -56,7 +58,7 @@ namespace Sentinal
         public GameObject FirstSelected => firstSelected;
         public GameObject LastSelected => lastSelected;
         public int Priority => priority;
-        public bool PreventDismissal => preventDismissal;
+        public bool RootView => rootView;
         public bool ExclusiveView => exclusiveView;
         public bool HideOtherViews => hideOtherViews;
         public bool TrackView => trackView;

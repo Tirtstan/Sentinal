@@ -426,7 +426,7 @@ MonoBehaviour:
   firstSelected: {fileID: 2722703882614016527}
   priority: 0
   trackView: 1
-  preventDismissal: 0
+  rootView: 0
   exclusiveView: 0
   hideOtherViews: 0
   preventSelection: 0
@@ -1321,7 +1321,7 @@ MonoBehaviour:
   firstSelected: {fileID: 0}
   priority: 10
   trackView: 1
-  preventDismissal: 0
+  rootView: 0
   exclusiveView: 0
   hideOtherViews: 0
   preventSelection: 1
@@ -1810,7 +1810,7 @@ MonoBehaviour:
   firstSelected: {fileID: 0}
   priority: 0
   trackView: 1
-  preventDismissal: 1
+  rootView: 1
   exclusiveView: 0
   hideOtherViews: 0
   preventSelection: 0
@@ -3611,7 +3611,7 @@ MonoBehaviour:
   firstSelected: {fileID: 1526483703}
   priority: 0
   trackView: 1
-  preventDismissal: 0
+  rootView: 0
   exclusiveView: 0
   hideOtherViews: 0
   preventSelection: 0

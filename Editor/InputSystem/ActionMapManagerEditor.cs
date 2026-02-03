@@ -12,11 +12,28 @@ namespace Sentinal.Editor
     {
         private readonly Dictionary<int, bool> playerFoldouts = new();
         private bool showHistoryFoldout = false;
+        private SerializedProperty useDefaultActionMapsProperty;
+        private SerializedProperty defaultActionMapsProperty;
+
+        private void OnEnable()
+        {
+            useDefaultActionMapsProperty = serializedObject.FindProperty("useDefaultActionMaps");
+            defaultActionMapsProperty = serializedObject.FindProperty("defaultActionMaps");
+        }
 
         public override void OnInspectorGUI()
         {
+            serializedObject.Update();
+
+            EditorGUILayout.LabelField("Default Action Maps", EditorStyles.boldLabel);
+            EditorGUILayout.PropertyField(useDefaultActionMapsProperty);
+            EditorGUILayout.PropertyField(defaultActionMapsProperty, true);
+
+            serializedObject.ApplyModifiedProperties();
+
             if (!Application.isPlaying)
             {
+                EditorGUILayout.Space(4);
                 EditorGUILayout.HelpBox("Runtime information will be displayed when playing.", MessageType.Info);
                 return;
             }
@@ -67,7 +84,7 @@ namespace Sentinal.Editor
                             string timeStr = timeSince < 1f ? $"{timeSince:F2}s" : $"{timeSince:F1}s";
 
                             var actionStyle = new GUIStyle(EditorStyles.miniLabel);
-                            if (entry.action == "Enable")
+                            if (entry.action == ActionMapAction.Enable)
                             {
                                 actionStyle.normal.textColor = SentinalEditorColors.AccentColor;
                             }
