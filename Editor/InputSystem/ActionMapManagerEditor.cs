@@ -25,7 +25,6 @@ namespace Sentinal.Editor
         {
             serializedObject.Update();
 
-            EditorGUILayout.LabelField("Default Action Maps", EditorStyles.boldLabel);
             EditorGUILayout.PropertyField(useDefaultActionMapsProperty);
             EditorGUILayout.PropertyField(defaultActionMapsProperty, true);
 
@@ -47,14 +46,15 @@ namespace Sentinal.Editor
 
             EditorGUILayout.Space(4);
 
-            // History section
+            // History section (one entry per view selector / source; same selector overwrites)
             ActionMapManager manager = target as ActionMapManager;
             var history = manager.GetHistory();
+            history.Sort((a, b) => string.Compare(a.source, b.source, System.StringComparison.Ordinal));
 
             EditorGUILayout.BeginHorizontal();
             showHistoryFoldout = EditorGUILayout.Foldout(
                 showHistoryFoldout,
-                $"History ({history.Count})",
+                $"Action maps per view ({history.Count})",
                 true,
                 EditorStyles.foldoutHeader
             );
@@ -69,34 +69,26 @@ namespace Sentinal.Editor
             {
                 if (history.Count == 0)
                 {
-                    EditorGUILayout.HelpBox("No action map changes recorded yet.", MessageType.Info);
+                    EditorGUILayout.HelpBox("No action map state recorded yet.", MessageType.Info);
                 }
                 else
                 {
                     EditorGUILayout.Space(2);
-                    // Show newest first
-                    for (int i = history.Count - 1; i >= 0; i--)
+                    foreach (var entry in history)
                     {
-                        var entry = history[i];
                         DrawInfoBox(() =>
                         {
-                            float timeSince = Time.time - entry.timestamp;
-                            string timeStr = timeSince < 1f ? $"{timeSince:F2}s" : $"{timeSince:F1}s";
-
                             var actionStyle = new GUIStyle(EditorStyles.miniLabel);
                             if (entry.action == ActionMapAction.Enable)
-                            {
                                 actionStyle.normal.textColor = SentinalEditorColors.AccentColor;
-                            }
 
                             EditorGUILayout.LabelField(
-                                $"[{timeStr} ago]  Player {entry.playerIndex}  |  {entry.action}: {string.Join(", ", entry.mapNames)}  |  Source: {entry.source}",
+                                $"{entry.source}  |  Player {entry.playerIndex}  {entry.action}: {string.Join(", ", entry.mapNames)}",
                                 actionStyle
                             );
                         });
 
-                        if (i > 0)
-                            EditorGUILayout.Space(2);
+                        EditorGUILayout.Space(2);
                     }
                 }
             }

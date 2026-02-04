@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.1] - 2026-02-05
+
+### Fixed
+
+-   **SentinalManager**: `OnDestroy` no longer nulls static events (`OnAdd`, `OnRemove`, `OnSwitch`). Only `Instance` is cleared. This fixes view events not firing for persistent subscribers (e.g. `ActionMapManager` on a DontDestroyOnLoad object) after loading a new scene, where the previous scene’s `SentinalManager` was destroyed and had cleared the event delegates.
+-   **ActionMapManager**: Re-subscribes to `SentinalManager` view events in `OnSceneLoaded`, so when used with DontDestroyOnLoad it continues to receive `OnSwitch` / `OnAdd` / `OnRemove` from the new scene’s `SentinalManager` after a scene load.
+
+### Changed
+
+-   **ActionMapManager**:
+    -   History is now **per view selector (source)** instead of a fixed-size list: same selector overwrites its previous entry. No maximum entry count.
+    -   Extracted `SubscribeToViewEvents` / `UnsubscribeFromViewEvents` and call `ResubscribeToViewEvents()` after `ClearStateForNewScene()` on scene load.
+-   **ActionMapManagerEditor**:
+    -   History foldout shows “Action maps per view (N)”, one row per source, sorted by source name; elapsed-time display removed.
+
 ## [3.1.0] - 2026-02-03
 
 ### Changed

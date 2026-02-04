@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.SceneManagement;
 
 namespace Sentinal.InputSystem
 {
@@ -48,9 +49,8 @@ namespace Sentinal.InputSystem
 
         private readonly List<ActionMapSnapshot> baselineStates = new();
         private readonly Dictionary<ViewInputSystemHandler, List<ActionMapSnapshot>> handlerSnapshots = new();
-        private readonly List<ActionMapHistoryEntry> history = new();
+        private readonly Dictionary<string, ActionMapHistoryEntry> historyBySource = new();
         private readonly List<ActionMapSnapshot> defaultActionMapSnapshots = new();
-        private const int MAX_HISTORY_ENTRIES = 50;
         private bool defaultsApplied = false;
 
         private void Awake()
@@ -62,9 +62,8 @@ namespace Sentinal.InputSystem
             }
 
             Instance = this;
-            SentinalManager.OnSwitch += OnViewSwitch;
-            SentinalManager.OnRemove += OnViewRemoved;
-            SentinalManager.OnAdd += OnViewAdded;
+            SubscribeToViewEvents();
+            SceneManager.sceneLoaded += OnSceneLoaded;
         }
 
         private void Start()
@@ -74,9 +73,55 @@ namespace Sentinal.InputSystem
 
         private void OnDestroy()
         {
+            SceneManager.sceneLoaded -= OnSceneLoaded;
+            UnsubscribeFromViewEvents();
+        }
+
+        private void SubscribeToViewEvents()
+        {
+            SentinalManager.OnSwitch += OnViewSwitch;
+            SentinalManager.OnRemove += OnViewRemoved;
+            SentinalManager.OnAdd += OnViewAdded;
+        }
+
+        private void UnsubscribeFromViewEvents()
+        {
             SentinalManager.OnSwitch -= OnViewSwitch;
             SentinalManager.OnRemove -= OnViewRemoved;
             SentinalManager.OnAdd -= OnViewAdded;
+        }
+
+        /// <summary>
+        /// Re-subscribes to SentinalManager view events. Called after scene load so this
+        /// (possibly DontDestroyOnLoad) instance is still listening when the new scene's
+        /// SentinalManager fires events, even if the previous manager nulled static events on destroy.
+        /// </summary>
+        private void ResubscribeToViewEvents()
+        {
+            UnsubscribeFromViewEvents();
+            SubscribeToViewEvents();
+        }
+
+        private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+        {
+            ClearStateForNewScene();
+            ResubscribeToViewEvents();
+        }
+
+        /// <summary>
+        /// Clears cached baselines, handler snapshots, and default snapshots so the manager
+        /// does not hold references to destroyed PlayerInput/ViewInputSystemHandlers after a scene load.
+        /// Call this (or rely on scene load) when using DontDestroyOnLoad so new scenes get a clean state.
+        /// </summary>
+        public void ClearStateForNewScene()
+        {
+            baselineStates.Clear();
+            handlerSnapshots.Clear();
+            historyBySource.Clear();
+            defaultActionMapSnapshots.Clear();
+            defaultsApplied = false;
+
+            CheckAndApplyDefaults();
         }
 
         private void OnViewSwitch(ViewSelector previousView, ViewSelector newView)
@@ -88,7 +133,9 @@ namespace Sentinal.InputSystem
             if (newView != null && newView.TryGetComponent(out ViewInputSystemHandler newHandler))
                 ApplyHandler(newHandler);
 
-            CheckAndApplyDefaults();
+            // Do not call CheckAndApplyDefaults() here: with default action maps (e.g. Player) enabled,
+            // it would call RestoreDefaultActionMaps() when a non-root view is open and immediately
+            // undo the handler we just applied (e.g. pause menu enabling UI / disabling Player).
         }
 
         private void OnViewAdded(ViewSelector view)
@@ -229,12 +276,14 @@ namespace Sentinal.InputSystem
                 }
 
                 if (restoredMaps.Count > 0)
+                {
                     AddHistoryEntry(
                         snapshot.playerInput.playerIndex,
                         ActionMapAction.Restore,
                         restoredMaps,
                         "DefaultActionMaps"
                     );
+                }
             }
 
             defaultActionMapSnapshots.Clear();
@@ -321,15 +370,10 @@ namespace Sentinal.InputSystem
                     }
                 }
 
-                // Record history
                 if (enabledMaps.Count > 0)
-                {
                     AddHistoryEntry(player.playerIndex, ActionMapAction.Enable, enabledMaps, sourceName);
-                }
                 if (disabledMaps.Count > 0)
-                {
                     AddHistoryEntry(player.playerIndex, ActionMapAction.Disable, disabledMaps, sourceName);
-                }
 
                 if (firstEnabled != null)
                     player.SwitchCurrentActionMap(firstEnabled);
@@ -421,19 +465,23 @@ namespace Sentinal.InputSystem
                 }
 
                 if (enabledMaps.Count > 0)
+                {
                     AddHistoryEntry(
                         player.playerIndex,
                         ActionMapAction.Enable,
                         enabledMaps,
                         sourceName + " (OnDisabled)"
                     );
+                }
                 if (disabledMaps.Count > 0)
+                {
                     AddHistoryEntry(
                         player.playerIndex,
                         ActionMapAction.Disable,
                         disabledMaps,
                         sourceName + " (OnDisabled)"
                     );
+                }
 
                 if (firstEnabled != null)
                     player.SwitchCurrentActionMap(firstEnabled);
@@ -508,29 +556,23 @@ namespace Sentinal.InputSystem
                 source = source,
             };
 
-            history.Add(entry);
-
-            // Limit history size
-            if (history.Count > MAX_HISTORY_ENTRIES)
-            {
-                history.RemoveAt(0);
-            }
+            historyBySource[source] = entry;
         }
 
         /// <summary>
-        /// Gets the action map change history.
+        /// Gets the latest action map state per view selector (source). Same selector overwrites the previous entry.
         /// </summary>
         public List<ActionMapHistoryEntry> GetHistory()
         {
-            return new List<ActionMapHistoryEntry>(history);
+            return new List<ActionMapHistoryEntry>(historyBySource.Values);
         }
 
         /// <summary>
-        /// Clears the action map change history.
+        /// Clears the action map state history.
         /// </summary>
         public void ClearHistory()
         {
-            history.Clear();
+            historyBySource.Clear();
         }
     }
 }

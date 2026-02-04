@@ -259,12 +259,5 @@ namespace Sentinal
 
             return viewInfoBuilder.ToString().TrimEnd();
         }
-
-        private void OnDestroy()
-        {
-            OnAdd = null;
-            OnRemove = null;
-            OnSwitch = null;
-        }
     }
 }
