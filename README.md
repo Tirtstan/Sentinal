@@ -142,7 +142,7 @@ Singleton that tracks and manages action map overlays across views using `ViewIn
 **Key features:**
 
 -   **Default Action Maps**: Configure action maps to apply when no non-root views are open (controlled by `useDefaultActionMaps` toggle).
--   **Action Map History**: Tracks all action map changes with timestamps, player index, action type (Enable/Disable/Restore), and source.
+-   **Action Map History**: Tracks the latest action map state per view selector (source); the same selector overwrites its previous entry. Editor shows one row per view with player index, action type (Enable/Disable/Restore), and map names.
 -   **Automatic Restoration**: Restores action maps to their previous state when views are closed or disabled.
 
 **Configuration:**
@@ -245,6 +245,7 @@ The custom editor shows real-time debugging information:
 -   **SentinalManager**: Shows focused view vs most recent view, view list with priority and input state.
 -   **ViewSelector**: Shows priority, history index, focus state, input enabled, connected PlayerInput.
 -   **ViewInputSystemHandler**: Shows input enabled state and action map configuration (Input System).
+-   **ActionMapManager**: Shows player count, “Action maps per view” (latest state per view selector, sorted by source), and per-player current action map with enabled maps list.
 
 ## BEST PRACTICES
 
@@ -257,3 +258,4 @@ The custom editor shows real-time debugging information:
 7. **Configure Action Maps** per view via `ViewInputSystemHandler` using `ActionMapConfig` arrays to specify both action map names and their enabled/disabled state for when views are enabled or disabled.
 8. **Set `PlayerInput.notificationBehavior`** to either `InvokeCSharpEvents` or `InvokeUnityEvents` in the inspector to avoid runtime warnings.
 9. **Use Default Action Maps** on `ActionMapManager` to configure action maps that should be active when only root views (like HUD/main menu) are open.
+10. **SentinalManager static events** are not cleared when a `SentinalManager` instance is destroyed (e.g. on scene unload). Persistent subscribers (e.g. `ActionMapManager` on DontDestroyOnLoad) keep receiving view events from the new scene’s manager.
