@@ -51,6 +51,7 @@ namespace Sentinal.InputSystem
         private readonly Dictionary<ViewInputSystemHandler, List<ActionMapSnapshot>> handlerSnapshots = new();
         private readonly Dictionary<string, ActionMapHistoryEntry> historyBySource = new();
         private readonly List<ActionMapSnapshot> defaultActionMapSnapshots = new();
+        private readonly Dictionary<ViewSelector, ViewInputSystemHandler> handlerCache = new();
         private bool defaultsApplied = false;
 
         private void Awake()
@@ -117,6 +118,7 @@ namespace Sentinal.InputSystem
         {
             baselineStates.Clear();
             handlerSnapshots.Clear();
+            handlerCache.Clear();
             historyBySource.Clear();
             defaultActionMapSnapshots.Clear();
             defaultsApplied = false;
@@ -126,20 +128,52 @@ namespace Sentinal.InputSystem
 
         private void OnViewSwitch(ViewSelector previousView, ViewSelector newView)
         {
-            // Backward compatibility: if views have handlers on the same GameObject, apply/restore them
-            if (previousView != null && previousView.TryGetComponent(out ViewInputSystemHandler prevHandler))
-                RestoreHandler(prevHandler);
+            // Only modify action maps when the target view explicitly has a handler.
+            if (newView != null && TryGetCachedHandler(newView, out ViewInputSystemHandler newHandler))
+            {
+                if (previousView != null && TryGetCachedHandler(previousView, out ViewInputSystemHandler prevHandler))
+                    RestoreHandler(prevHandler);
 
-            if (newView != null && newView.TryGetComponent(out ViewInputSystemHandler newHandler))
                 ApplyHandler(newHandler);
+            }
+        }
 
-            // Do not call CheckAndApplyDefaults() here: with default action maps (e.g. Player) enabled,
-            // it would call RestoreDefaultActionMaps() when a non-root view is open and immediately
-            // undo the handler we just applied (e.g. pause menu enabling UI / disabling Player).
+        private bool TryGetCachedHandler(ViewSelector view, out ViewInputSystemHandler handler)
+        {
+            if (view == null)
+            {
+                handler = null;
+                return false;
+            }
+
+            if (handlerCache.TryGetValue(view, out handler))
+                return handler != null;
+
+            bool found = view.TryGetComponent(out handler);
+            handlerCache[view] = found ? handler : null;
+            return found;
+        }
+
+        /// <summary>
+        /// Checks if there are any non-root views in the cache that manage input.
+        /// Views without a handler are never cached, so this is a fast dictionary iteration.
+        /// </summary>
+        private bool AnyNonRootViewsWithInputHandlersOpen()
+        {
+            foreach (var kvp in handlerCache)
+            {
+                if (kvp.Key != null && !kvp.Key.RootView && kvp.Value != null)
+                    return true;
+            }
+
+            return false;
         }
 
         private void OnViewAdded(ViewSelector view)
         {
+            if (view != null)
+                TryGetCachedHandler(view, out _);
+
             CheckAndApplyDefaults();
         }
 
@@ -148,16 +182,18 @@ namespace Sentinal.InputSystem
             if (view == null)
                 return;
 
-            if (view.TryGetComponent(out ViewInputSystemHandler handler))
+            if (TryGetCachedHandler(view, out ViewInputSystemHandler handler))
             {
                 RestoreHandler(handler);
                 handlerSnapshots.Remove(handler);
             }
 
+            handlerCache.Remove(view);
+
             if (SentinalManager.Instance != null && SentinalManager.Instance.AnyViewsOpen)
             {
                 ViewSelector currentView = SentinalManager.Instance.CurrentView;
-                if (currentView != null && currentView.TryGetComponent(out ViewInputSystemHandler currentHandler))
+                if (currentView != null && TryGetCachedHandler(currentView, out ViewInputSystemHandler currentHandler))
                     ApplyHandler(currentHandler);
             }
 
@@ -177,7 +213,9 @@ namespace Sentinal.InputSystem
                 return;
             }
 
-            bool shouldApplyDefaults = !SentinalManager.Instance.AnyNonRootViewsOpen;
+            // Only consider non-root views that actually have a ViewInputSystemHandler.
+            // Views without input management should not influence default action maps.
+            bool shouldApplyDefaults = !AnyNonRootViewsWithInputHandlersOpen();
 
             if (shouldApplyDefaults && !defaultsApplied)
             {
