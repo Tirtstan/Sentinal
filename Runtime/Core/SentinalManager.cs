@@ -246,14 +246,24 @@ namespace Sentinal
             if (viewHistory.Count == 0)
                 return "No open views.";
 
+            ViewSelector current = CurrentView;
+
             viewInfoBuilder.Clear();
             viewInfoBuilder.AppendLine("View Stack (oldest to newest):");
 
             int index = 0;
             foreach (var view in viewHistory)
             {
-                string viewName = view != null ? view.name : "NULL";
-                viewInfoBuilder.AppendLine($"[{index}] {viewName}");
+                if (view == null)
+                {
+                    viewInfoBuilder.AppendLine($"  [{index}] NULL");
+                }
+                else
+                {
+                    string marker = view == current ? " *" : "";
+                    viewInfoBuilder.AppendLine($"  [{index}] {view.name} (P:{view.Priority}){marker}");
+                }
+
                 index++;
             }
 
