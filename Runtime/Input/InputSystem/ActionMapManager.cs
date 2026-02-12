@@ -1,5 +1,6 @@
 #if ENABLE_INPUT_SYSTEM
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -63,7 +64,9 @@ namespace Sentinal.InputSystem
             }
 
             Instance = this;
-            SubscribeToViewEvents();
+            SentinalManager.OnSwitch += OnViewSwitch;
+            SentinalManager.OnRemove += OnViewRemoved;
+            SentinalManager.OnAdd += OnViewAdded;
             SceneManager.sceneLoaded += OnSceneLoaded;
         }
 
@@ -74,39 +77,15 @@ namespace Sentinal.InputSystem
 
         private void OnDestroy()
         {
-            SceneManager.sceneLoaded -= OnSceneLoaded;
-            UnsubscribeFromViewEvents();
-        }
-
-        private void SubscribeToViewEvents()
-        {
-            SentinalManager.OnSwitch += OnViewSwitch;
-            SentinalManager.OnRemove += OnViewRemoved;
-            SentinalManager.OnAdd += OnViewAdded;
-        }
-
-        private void UnsubscribeFromViewEvents()
-        {
             SentinalManager.OnSwitch -= OnViewSwitch;
             SentinalManager.OnRemove -= OnViewRemoved;
             SentinalManager.OnAdd -= OnViewAdded;
-        }
-
-        /// <summary>
-        /// Re-subscribes to SentinalManager view events. Called after scene load so this
-        /// (possibly DontDestroyOnLoad) instance is still listening when the new scene's
-        /// SentinalManager fires events, even if the previous manager nulled static events on destroy.
-        /// </summary>
-        private void ResubscribeToViewEvents()
-        {
-            UnsubscribeFromViewEvents();
-            SubscribeToViewEvents();
+            SceneManager.sceneLoaded -= OnSceneLoaded;
         }
 
         private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
             ClearStateForNewScene();
-            ResubscribeToViewEvents();
         }
 
         /// <summary>
@@ -122,8 +101,6 @@ namespace Sentinal.InputSystem
             historyBySource.Clear();
             defaultActionMapSnapshots.Clear();
             defaultsApplied = false;
-
-            CheckAndApplyDefaults();
         }
 
         private void OnViewSwitch(ViewSelector previousView, ViewSelector newView)
