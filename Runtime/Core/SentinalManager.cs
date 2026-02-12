@@ -1,8 +1,10 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 namespace Sentinal
 {
@@ -30,6 +32,7 @@ namespace Sentinal
         private readonly LinkedList<ViewSelector> viewHistory = new();
         private readonly List<ViewSelector> hiddenViews = new();
         private readonly StringBuilder viewInfoBuilder = new();
+        private bool selectionSucceeded;
 
         /// <summary>
         /// Gets the most recently opened view in the history.
@@ -65,6 +68,15 @@ namespace Sentinal
             Instance = this;
         }
 
+        private void Update()
+        {
+            if (selectionSucceeded || EventSystem.current == null)
+                return;
+
+            if (TrySelectCurrentView())
+                selectionSucceeded = true;
+        }
+
         public void Add(ViewSelector view)
         {
             if (view == null || viewHistory.Contains(view))
@@ -77,6 +89,8 @@ namespace Sentinal
             ViewSelector newFocusedView = CurrentView;
             if (previousFocusedView != newFocusedView)
                 OnSwitch?.Invoke(previousFocusedView, newFocusedView);
+
+            TrySelectCurrentView();
         }
 
         public void Remove(ViewSelector view)
@@ -196,7 +210,8 @@ namespace Sentinal
 
         public void RestoreHiddenViews()
         {
-            foreach (var view in hiddenViews)
+            var viewsToRestore = new List<ViewSelector>(hiddenViews);
+            foreach (var view in viewsToRestore)
             {
                 if (view != null)
                 {
@@ -210,7 +225,7 @@ namespace Sentinal
 
         public bool TrySelectCurrentView()
         {
-            if (CurrentView == null || CurrentView.PreventSelection)
+            if (CurrentView == null || CurrentView.PreventSelection || !CurrentView.AutoSelectOnEnable)
                 return false;
 
             if (CurrentView.TryGetComponent(out IViewSelector selector))
