@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.3] - 2026-02-12
+
+### Fixed
+
+- **ViewDismissalInputHandler**: Closing the current view is now delayed to the next frame. This avoids `IndexOutOfRangeException` errors in `InputSystemUIInputModule` when `UI/Cancel` is bound to `Esc` and closing a view changes action maps.
+- **ActionMapManager**:
+    - After any view switch, default action maps are checked and applied again. This makes sure `defaultActionMaps` are used when the last non-root view in a menu chain is closed.
+    - `CheckAndApplyDefaults()` now uses `SentinalManager.AnyNonRootViewsOpen` to decide when defaults should be active. Defaults are applied whenever there are no non-root views open.
+
 ## [3.1.2] - 2026-02-06
 
 ### Fixed

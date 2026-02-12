@@ -1,6 +1,6 @@
 # Sentinal - Unity Menu Navigation & UI Selection System
 
-A Unity package for managing hierarchical menu navigation with history tracking, input system integration, and automatic UI element selection. Perfect for game menus, settings panels, and any UI that requires structured navigation flow.
+A Unity package for managing menu navigation with history tracking, input system integration, and automatic UI element selection. Perfect for game menus, settings panels, and any UI that requires structured navigation flow.
 
 > [!NOTE]  
 > This does not replace **UGUI's navigation system.**
@@ -37,22 +37,22 @@ https://github.com/Tirtstan/Sentinal.git
 
 ### Core Navigation
 
--   **Menu/View Tracking**: Navigate through multiple menus with automatic history tracking.
--   **Priority-Based Focus**: Views are focused based on priority (higher priority first), with recency as tie-breaker.
--   **UI Selection**: Auto-selection of UI elements with memory of last selected items.
--   **Root Views**: Views that don't get auto-closed and have special permissions around being closed; can still be hidden (`rootView`).
--   **Exclusive Views**: Views that close all other views (except root views) when opened.
+- **Menu/View Tracking**: Navigate through multiple menus with automatic history tracking.
+- **Priority-Based Focus**: Views are focused based on priority (higher priority first), with recency as tie-breaker.
+- **UI Selection**: Auto-selection of UI elements with memory of last selected items.
+- **Root Views**: Views that don't get auto-closed and have special permissions around being closed; can still be hidden (`rootView`).
+- **Exclusive Views**: Views that close all other views (except root views) when opened.
 
 ### Input System Integration
 
--   **Action Map Overlays**: Intelligent action map management that tracks enabled/disabled maps per view.
--   **Per-View Input Gating**: Enable/disable input for specific views based on focus.
--   **Single or Multi-Player**: Support for single PlayerInput or apply to all players simultaneously.
--   **Efficient Switching**: Recomputes action maps when switching between menus, not just on close.
--   **Configurable Actions**: Customisable input actions for canceling and re-selecting.
--   **Default Action Maps**: Configure action maps to apply when no non-root views are open (e.g., gameplay maps when only HUD/main menu is visible).
--   **Flexible Action Map Configuration**: Use `ActionMapConfig` to specify both action map names and their enabled/disabled state for when views are enabled or disabled.
--   **Dual Event System Support**: Supports both C# Events (`InvokeCSharpEvents`) and Unity Events (`InvokeUnityEvents`) notification behaviors on `PlayerInput`.
+- **Action Map Overlays**: Intelligent action map management that tracks enabled/disabled maps per view.
+- **Per-View Input Gating**: Enable/disable input for specific views based on focus.
+- **Single or Multi-Player**: Support for single PlayerInput or apply to all players simultaneously.
+- **Efficient Switching**: Recomputes action maps when switching between menus, not just on close.
+- **Configurable Actions**: Customisable input actions for canceling and re-selecting.
+- **Default Action Maps**: Configure action maps to apply when no non-root views are open (e.g., gameplay maps when only HUD/main menu is visible).
+- **Flexible Action Map Configuration**: Use `ActionMapConfig` to specify both action map names and their enabled/disabled state for when views are enabled or disabled.
+- **Dual Event System Support**: Supports both C# Events (`InvokeCSharpEvents`) and Unity Events (`InvokeUnityEvents`) notification behaviors on `PlayerInput`.
 
 ## CORE COMPONENTS
 
@@ -64,18 +64,18 @@ The central manager that handles all view/menu navigation logic and maintains th
 
 **Public API:**
 
--   `CloseCurrentView()` - Close the focused view in the stack.
--   `CloseAllViews()` - Close all views (optionally excluding root views).
--   `TrySelectCurrentView()` - Attempt to select the focused view's UI element.
--   `AnyViewsOpen` - Check if any views are currently open.
--   `CurrentView` - Get the currently focused view selector (priority + recency).
--   `MostRecentView` - Get the most recently opened view selector.
+- `CloseCurrentView()` - Close the focused view in the stack.
+- `CloseAllViews()` - Close all views (optionally excluding root views).
+- `TrySelectCurrentView()` - Attempt to select the focused view's UI element.
+- `AnyViewsOpen` - Check if any views are currently open.
+- `CurrentView` - Get the currently focused view selector (priority + recency).
+- `MostRecentView` - Get the most recently opened view selector.
 
 **Events:**
 
--   `OnAdd` - Fired when a new view is added to the stack.
--   `OnRemove` - Fired when a view is removed from the stack.
--   `OnSwitch` - Fired when switching between views.
+- `OnAdd` - Fired when a new view is added to the stack.
+- `OnRemove` - Fired when a view is removed from the stack.
+- `OnSwitch` - Fired when switching between views.
 
 ### `ViewSelector` (Menu Component)
 
@@ -87,22 +87,22 @@ Add this to any GameObject that represents a menu or navigable view. One that wi
 
 ##### **View**
 
--   `priority` - Focus priority (higher values get focus first; equal priority uses recency).
--   `firstSelected` - The GameObject to auto-select when this view becomes active.
--   `rootView` - Root view: does not get auto-closed, has special permissions around being closed; can still be hidden (e.g. main menu, HUD).
--   `exclusiveView` - Close all other views (except root views) when this view opens.
--   `hideOtherViews` - Temporarily hide other views while this view is open.
--   `trackView` - Whether to include this view in the navigation history stack.
+- `priority` - Focus priority (higher values get focus first; equal priority uses recency).
+- `firstSelected` - The GameObject to auto-select when this view becomes active.
+- `rootView` - Root view: does not get auto-closed, has special permissions around being closed; can still be hidden (e.g. main menu, HUD).
+- `exclusiveView` - Close all other views (except root views) when this view opens.
+- `hideOtherViews` - Temporarily hide other views while this view is open.
+- `trackView` - Whether to include this view in the navigation history stack.
 
 ##### **Selection**
 
--   `preventSelection` - Prevent automatic selection (useful for input-only views).
--   `autoSelectOnEnable` - Automatically select the first element when the view is enabled.
--   `rememberLastSelected` - Remember and restore the last selected UI element.
+- `preventSelection` - Prevent automatic selection (useful for input-only views).
+- `autoSelectOnEnable` - Automatically select the first element when the view is enabled.
+- `rememberLastSelected` - Remember and restore the last selected UI element.
 
 ##### **Input**
 
--   (Input System) Add `ViewInputSystemHandler` on the same GameObject to gate input and/or apply action maps.
+- (Input System) Add `ViewInputSystemHandler` on the same GameObject to gate input and/or apply action maps.
 
 ### `ViewDismissalInputHandler` (Input System: Dismiss + Refocus)
 
@@ -110,8 +110,8 @@ Add this to any GameObject that represents a menu or navigable view. One that wi
 
 Listens for two Input System actions:
 
--   Cancel/Back → `SentinalManager.Instance.CloseCurrentView()`
--   Focus → `SentinalManager.Instance.TrySelectCurrentView()`
+- Cancel/Back → `SentinalManager.Instance.CloseCurrentView()`
+- Focus → `SentinalManager.Instance.TrySelectCurrentView()`
 
 Recommended placement: **same GameObject as `SentinalManager`**.
 
@@ -121,17 +121,17 @@ Recommended placement: **same GameObject as `SentinalManager`**.
 
 Per-view handler that can:
 
--   Enable/disable “input enabled” state depending on whether the view is the current view (`InputOnlyWhenCurrent`).
--   (Optionally) Apply action map changes when enabled or disabled.
+- Enable/disable “input enabled” state depending on whether the view is the current view (`InputOnlyWhenCurrent`).
+- (Optionally) Apply action map changes when enabled or disabled.
 
 Key fields:
 
--   `inputOnlyWhenCurrent` (default true)
--   `viewSelector` (optional, but required if `inputOnlyWhenCurrent` is true)
--   `playerInput` / `playerIndex`
--   `applyToAllPlayers`
--   `onEnabledActionMaps` - Action maps to configure when this handler is **enabled** (view is active). Each entry specifies the action map name and whether to enable or disable it.
--   `onDisabledActionMaps` - Action maps to configure when this handler is **disabled** (view is inactive). Each entry specifies the action map name and whether to enable or disable it.
+- `inputOnlyWhenCurrent` (default true)
+- `viewSelector` (optional, but required if `inputOnlyWhenCurrent` is true)
+- `playerInput` / `playerIndex`
+- `applyToAllPlayers`
+- `onEnabledActionMaps` - Action maps to configure when this handler is **enabled** (view is active). Each entry specifies the action map name and whether to enable or disable it.
+- `onDisabledActionMaps` - Action maps to configure when this handler is **disabled** (view is inactive). Each entry specifies the action map name and whether to enable or disable it.
 
 ### `ActionMapManager` (Input System: Global Action Map Coordinator)
 
@@ -141,14 +141,14 @@ Singleton that tracks and manages action map overlays across views using `ViewIn
 
 **Key features:**
 
--   **Default Action Maps**: Configure action maps to apply when no non-root views are open (controlled by `useDefaultActionMaps` toggle).
--   **Action Map History**: Tracks the latest action map state per view selector (source); the same selector overwrites its previous entry. Editor shows one row per view with player index, action type (Enable/Disable/Restore), and map names.
--   **Automatic Restoration**: Restores action maps to their previous state when views are closed or disabled.
+- **Default Action Maps**: Configure action maps to apply when no non-root views are open (controlled by `useDefaultActionMaps` toggle).
+- **Action Map History**: Tracks the latest action map state per view selector (source); the same selector overwrites its previous entry. Editor shows one row per view with player index, action type (Enable/Disable/Restore), and map names.
+- **Automatic Restoration**: Restores action maps to their previous state when views are closed or disabled.
 
 **Configuration:**
 
--   `useDefaultActionMaps` - If true, applies `defaultActionMaps` when no non-root views are open. If false, uses current in-memory state.
--   `defaultActionMaps` - Array of `ActionMapConfig` entries specifying which action maps to enable/disable when only root views are open.
+- `useDefaultActionMaps` - If true, applies `defaultActionMaps` when no non-root views are open. If false, uses current in-memory state.
+- `defaultActionMaps` - Array of `ActionMapConfig` entries specifying which action maps to enable/disable when only root views are open.
 
 ## USAGE EXAMPLES
 
@@ -219,9 +219,9 @@ private void OnMenuSwitched(ViewSelector from, ViewSelector to)
 
 ## REQUIREMENTS
 
--   **Unity 2021.3** or later
--   **Input System package** (optional, for input handling features)
--   **TextMeshPro** (for sample scenes)
+- **Unity 2021.3** or later
+- **Input System package** (optional, for input handling features)
+- **TextMeshPro** (for sample scenes)
 
 ## INPUT SYSTEM SETUP
 
@@ -231,8 +231,8 @@ Sentinal supports both **C# Events** (`InvokeCSharpEvents`) and **Unity Events**
 
 **Recommended:** Set `PlayerInput.notificationBehavior` to either:
 
--   `InvokeCSharpEvents` - Uses C# events (`onActionTriggered`, `onControlsChanged`, etc.)
--   `InvokeUnityEvents` - Uses Unity Events (`actionEvents`, `controlsChangedEvent`, etc.)
+- `InvokeCSharpEvents` - Uses C# events (`onActionTriggered`, `onControlsChanged`, etc.)
+- `InvokeUnityEvents` - Uses Unity Events (`actionEvents`, `controlsChangedEvent`, etc.)
 
 **Note:** If `PlayerInput.notificationBehavior` is set to `SendMessages` or `BroadcastMessages`, Sentinal will automatically change it to `InvokeCSharpEvents` at runtime and log a warning. Update the setting in the inspector to avoid runtime changes.
 
@@ -242,10 +242,10 @@ Sentinal supports both **C# Events** (`InvokeCSharpEvents`) and **Unity Events**
 
 The custom editor shows real-time debugging information:
 
--   **SentinalManager**: Shows focused view vs most recent view, view list with priority and input state.
--   **ViewSelector**: Shows priority, history index, focus state, input enabled, connected PlayerInput.
--   **ViewInputSystemHandler**: Shows input enabled state and action map configuration (Input System).
--   **ActionMapManager**: Shows player count, “Action maps per view” (latest state per view selector, sorted by source), and per-player current action map with enabled maps list.
+- **SentinalManager**: Shows focused view vs most recent view, view list with priority and input state.
+- **ViewSelector**: Shows priority, history index, focus state, input enabled, connected PlayerInput.
+- **ViewInputSystemHandler**: Shows input enabled state and action map configuration (Input System).
+- **ActionMapManager**: Shows player count, “Action maps per view” (latest state per view selector, sorted by source), and per-player current action map with enabled maps list.
 
 ## BEST PRACTICES
 

@@ -136,6 +136,8 @@ namespace Sentinal.InputSystem
 
                 ApplyHandler(newHandler);
             }
+
+            CheckAndApplyDefaults();
         }
 
         private bool TryGetCachedHandler(ViewSelector view, out ViewInputSystemHandler handler)
@@ -213,9 +215,12 @@ namespace Sentinal.InputSystem
                 return;
             }
 
-            // Only consider non-root views that actually have a ViewInputSystemHandler.
-            // Views without input management should not influence default action maps.
-            bool shouldApplyDefaults = !AnyNonRootViewsWithInputHandlersOpen();
+            // Decide whether defaults should be active:
+            // - If Sentinal reports no non-root views open at all, always apply defaults.
+            // - Otherwise, only consider non-root views that actually have a ViewInputSystemHandler;
+            //   views without input management should not influence default action maps.
+            bool shouldApplyDefaults =
+                !SentinalManager.Instance.AnyNonRootViewsOpen || !AnyNonRootViewsWithInputHandlersOpen();
 
             if (shouldApplyDefaults && !defaultsApplied)
             {
