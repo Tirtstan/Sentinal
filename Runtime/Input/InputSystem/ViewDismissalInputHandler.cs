@@ -1,4 +1,5 @@
 #if ENABLE_INPUT_SYSTEM
+using System.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -31,6 +32,7 @@ namespace Sentinal.InputSystem
         private InputAction cancelInputAction;
         private InputAction focusInputAction;
         private bool isSubscribed;
+        private bool closeRequestedThisFrame;
 
         private void Awake()
         {
@@ -134,11 +136,30 @@ namespace Sentinal.InputSystem
             isSubscribed = false;
         }
 
-        private void OnCancelPerformed(InputAction.CallbackContext context) =>
-            SentinalManager.Instance.CloseCurrentView();
+        private void OnCancelPerformed(InputAction.CallbackContext context) => RequestCloseCurrentView();
 
-        private void OnCancelCanceled(InputAction.CallbackContext context) =>
-            SentinalManager.Instance.CloseCurrentView();
+        private void OnCancelCanceled(InputAction.CallbackContext context) => RequestCloseCurrentView();
+
+        private void RequestCloseCurrentView()
+        {
+            // Avoid multiple close requests within the same frame.
+            if (closeRequestedThisFrame)
+                return;
+
+            closeRequestedThisFrame = true;
+            StartCoroutine(CloseCurrentViewNextFrame());
+        }
+
+        private IEnumerator CloseCurrentViewNextFrame()
+        {
+            // Wait until the current input update & UI callbacks have fully finished.
+            yield return null;
+
+            closeRequestedThisFrame = false;
+
+            if (SentinalManager.Instance != null)
+                SentinalManager.Instance.CloseCurrentView();
+        }
 
         private void OnFocusPerformed(InputAction.CallbackContext context) =>
             SentinalManager.Instance.TrySelectCurrentView();
