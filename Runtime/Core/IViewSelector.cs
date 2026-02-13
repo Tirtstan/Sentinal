@@ -28,12 +28,20 @@ namespace Sentinal
         public bool RootView { get; }
 
         /// <summary>
+        /// The group mask for this view. Views with overlapping group masks share groups.
+        /// A mask of 0 means no groups are assigned (affects all views for backward compatibility).
+        /// </summary>
+        public int GroupMask { get; }
+
+        /// <summary>
         /// Whether this view is exclusive. If true, it will close all other views (except root views) when opened.
+        /// Only affects views in the same group(s) if grouping is configured.
         /// </summary>
         public bool ExclusiveView { get; }
 
         /// <summary>
         /// Whether this view hides all other views when opened. Unlike exclusive, this only hides them temporarily.
+        /// Only affects views in the same group(s) if grouping is configured.
         /// </summary>
         public bool HideOtherViews { get; }
 

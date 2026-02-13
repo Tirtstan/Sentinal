@@ -168,12 +168,24 @@ namespace Sentinal
         /// Closes all views.
         /// </summary>
         /// <param name="excludeRootViews">If true, root views will not be closed.</param>
-        public void CloseAllViews(bool excludeRootViews = false)
+        public void CloseAllViews(bool excludeRootViews = false) => CloseAllViews(-1, excludeRootViews);
+
+        /// <summary>
+        /// Closes all views that match the given group mask.
+        /// When <paramref name="groupMask"/> is -1, all views are affected (no grouping filter).
+        /// When it is 0, no views are affected by grouping (i.e. nothing is closed via grouping).
+        /// </summary>
+        /// <param name="groupMask">Group mask filter. Only views with overlapping groups are closed when non-negative.</param>
+        /// <param name="excludeRootViews">If true, root views will not be closed.</param>
+        public void CloseAllViews(int groupMask, bool excludeRootViews = false)
         {
             var viewsToClose = new List<ViewSelector>(viewHistory);
             foreach (var view in viewsToClose)
             {
                 if (view.RootView && excludeRootViews)
+                    continue;
+
+                if (groupMask >= 0 && (groupMask & view.GroupMask) == 0)
                     continue;
 
                 CloseView(view);
@@ -192,7 +204,14 @@ namespace Sentinal
             }
         }
 
-        public void HideAllViews(ViewSelector excludeView)
+        /// <summary>
+        /// Hides all views that match the given group mask, excluding a specific view.
+        /// When <paramref name="groupMask"/> is -1, all views (except the excluded view) are hidden.
+        /// When it is 0, no other views are hidden by grouping.
+        /// </summary>
+        /// <param name="groupMask">Group mask filter. Only views with overlapping groups are hidden when non-negative.</param>
+        /// <param name="excludeView">The view to keep active.</param>
+        public void HideAllViews(int groupMask, ViewSelector excludeView)
         {
             hiddenViews.Clear();
 
@@ -200,6 +219,9 @@ namespace Sentinal
             foreach (var view in viewsToHide)
             {
                 if (view == excludeView || !view.gameObject.activeInHierarchy)
+                    continue;
+
+                if (groupMask >= 0 && (groupMask & view.GroupMask) == 0)
                     continue;
 
                 hiddenViews.Add(view);
@@ -225,7 +247,7 @@ namespace Sentinal
 
         public bool TrySelectCurrentView()
         {
-            if (CurrentView == null || CurrentView.PreventSelection || !CurrentView.AutoSelectOnEnable)
+            if (CurrentView == null)
                 return false;
 
             if (CurrentView.TryGetComponent(out IViewSelector selector))
