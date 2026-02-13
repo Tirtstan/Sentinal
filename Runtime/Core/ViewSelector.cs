@@ -28,15 +28,23 @@ namespace Sentinal
         [FormerlySerializedAs("preventDismissal")]
         private bool rootView;
 
+        [Header("Grouping")]
+        [SerializeField]
+        [ViewGroupMask]
+        [Tooltip(
+            "Selected groups for this view. Exclusive and hide behaviors will only affect views in the same group(s)."
+        )]
+        private int groupMask;
+
         [SerializeField]
         [Tooltip(
-            "Whether this view is exclusive. If true, it will close all other views (except root views) when opened."
+            "Whether this view is exclusive. If true, it will close all other views (except root views) when opened. Only affects views in the same group(s) if grouping is configured."
         )]
         private bool exclusiveView;
 
         [SerializeField]
         [Tooltip(
-            "Whether this view hides all other views when opened. Unlike exclusive, this only hides them temporarily."
+            "Whether this view hides all other views when opened. Unlike exclusive, this only hides them temporarily. Only affects views in the same group(s) if grouping is configured."
         )]
         private bool hideOtherViews;
 
@@ -59,6 +67,7 @@ namespace Sentinal
         public GameObject LastSelected => lastSelected;
         public int Priority => priority;
         public bool RootView => rootView;
+        public int GroupMask => groupMask;
         public bool ExclusiveView => exclusiveView;
         public bool HideOtherViews => hideOtherViews;
         public bool TrackView => trackView;
@@ -80,9 +89,9 @@ namespace Sentinal
         private void OnEnable()
         {
             if (exclusiveView)
-                SentinalManager.Instance.CloseAllViews();
+                SentinalManager.Instance.CloseAllViews(GroupMask);
             else if (hideOtherViews)
-                SentinalManager.Instance.HideAllViews(this);
+                SentinalManager.Instance.HideAllViews(GroupMask, this);
 
             if (trackView)
                 SentinalManager.Instance.Add(this);
@@ -182,6 +191,22 @@ namespace Sentinal
         public bool IsCurrent() => SentinalManager.Instance != null && SentinalManager.Instance.IsCurrent(this);
 
         /// <summary>
+        /// Checks if this view shares at least one group with another view.
+        /// </summary>
+        /// <param name="other">The other view to check.</param>
+        /// <returns>True if both views share at least one group.</returns>
+        public bool SharesGroupWith(ViewSelector other)
+        {
+            if (other == null)
+                return false;
+
+            if (groupMask == 0 || other.groupMask == 0)
+                return false;
+
+            return (groupMask & other.groupMask) != 0;
+        }
+
+        /// <summary>
         /// Checks if the selectable GameObject is part of this selector's hierarchy.
         /// </summary>
         /// <param name="selectable">The GameObject to check.</param>
@@ -201,6 +226,11 @@ namespace Sentinal
             }
 
             return false;
+        }
+
+        private void Reset()
+        {
+            groupMask = 1;
         }
 
         private void OnDestroy()

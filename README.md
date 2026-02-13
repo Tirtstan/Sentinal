@@ -37,22 +37,16 @@ https://github.com/Tirtstan/Sentinal.git
 
 ### Core Navigation
 
-- **Menu/View Tracking**: Navigate through multiple menus with automatic history tracking.
-- **Priority-Based Focus**: Views are focused based on priority (higher priority first), with recency as tie-breaker.
-- **UI Selection**: Auto-selection of UI elements with memory of last selected items.
-- **Root Views**: Views that don't get auto-closed and have special permissions around being closed; can still be hidden (`rootView`).
-- **Exclusive Views**: Views that close all other views (except root views) when opened.
+- **Tracked Views & Focus**: Automatic view stack with history, priority-based focus (higher priority + recency), and optional root views that stay open.
+- **Selection & Exclusive Behaviour**: Auto-selection with last-selected memory, plus exclusive views that close/hide other views (excluding root views).
+- **View Groups**: Optional grouping via `SentinalViewGroups` and `groupMask` so exclusive/hide behaviour only affects views in the same group(s).
 
 ### Input System Integration
 
-- **Action Map Overlays**: Intelligent action map management that tracks enabled/disabled maps per view.
-- **Per-View Input Gating**: Enable/disable input for specific views based on focus.
-- **Single or Multi-Player**: Support for single PlayerInput or apply to all players simultaneously.
-- **Efficient Switching**: Recomputes action maps when switching between menus, not just on close.
-- **Configurable Actions**: Customisable input actions for canceling and re-selecting.
-- **Default Action Maps**: Configure action maps to apply when no non-root views are open (e.g., gameplay maps when only HUD/main menu is visible).
-- **Flexible Action Map Configuration**: Use `ActionMapConfig` to specify both action map names and their enabled/disabled state for when views are enabled or disabled.
-- **Dual Event System Support**: Supports both C# Events (`InvokeCSharpEvents`) and Unity Events (`InvokeUnityEvents`) notification behaviors on `PlayerInput`.
+- **Per-View Input & Gating**: Gate input per view based on focus and configure action maps for when views are enabled/disabled (via `ActionMapConfig`).
+- **Action Map Overlays & Defaults**: Global `ActionMapManager` tracks per-view overlays, recomputes on switches, and applies default action maps when no non-root views are open.
+- **Single or Multi-Player**: Works with a single `PlayerInput` or across all players at once.
+- **Event System Support**: Supports both C# Events (`InvokeCSharpEvents`) and Unity Events (`InvokeUnityEvents`) notification behaviors on `PlayerInput`.
 
 ## CORE COMPONENTS
 
@@ -66,6 +60,7 @@ The central manager that handles all view/menu navigation logic and maintains th
 
 - `CloseCurrentView()` - Close the focused view in the stack.
 - `CloseAllViews()` - Close all views (optionally excluding root views).
+- `CloseAllViews(int groupMask, bool excludeRootViews = false)` - Close all views in the given group(s) (optionally excluding root views).
 - `TrySelectCurrentView()` - Attempt to select the focused view's UI element.
 - `AnyViewsOpen` - Check if any views are currently open.
 - `CurrentView` - Get the currently focused view selector (priority + recency).
@@ -90,8 +85,9 @@ Add this to any GameObject that represents a menu or navigable view. One that wi
 - `priority` - Focus priority (higher values get focus first; equal priority uses recency).
 - `firstSelected` - The GameObject to auto-select when this view becomes active.
 - `rootView` - Root view: does not get auto-closed, has special permissions around being closed; can still be hidden (e.g. main menu, HUD).
-- `exclusiveView` - Close all other views (except root views) when this view opens.
-- `hideOtherViews` - Temporarily hide other views while this view is open.
+- `groupMask` - Optional bitmask of view groups for this view. Groups are defined in the shared `SentinalViewGroups` asset (`Assets/Resources/SentinalViewGroups.asset`) and control how exclusive/hide behaviour is scoped.
+- `exclusiveView` - Close other views (except root views) when this view opens; when a non-zero `groupMask` is set, only affects views in the same group(s).
+- `hideOtherViews` - Temporarily hide other views while this view is open; when a non-zero `groupMask` is set, only affects views in the same group(s).
 - `trackView` - Whether to include this view in the navigation history stack.
 
 ##### **Selection**

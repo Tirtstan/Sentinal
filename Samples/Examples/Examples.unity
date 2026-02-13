@@ -427,6 +427,7 @@ MonoBehaviour:
   priority: 0
   trackView: 1
   rootView: 0
+  groupMask: 1
   exclusiveView: 0
   hideOtherViews: 0
   preventSelection: 0
@@ -1322,6 +1323,7 @@ MonoBehaviour:
   priority: 10
   trackView: 1
   rootView: 0
+  groupMask: 1
   exclusiveView: 0
   hideOtherViews: 0
   preventSelection: 1
@@ -1344,9 +1346,10 @@ MonoBehaviour:
   playerInput: {fileID: 210860399}
   playerIndex: 0
   applyToAllPlayers: 0
-  enableActionMaps:
-  - UI
-  disableActionMaps: []
+  onEnabledActionMaps:
+  - actionMapName: UI
+    enable: 1
+  onDisabledActionMaps: []
 --- !u!1001 &845474832
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1811,6 +1814,7 @@ MonoBehaviour:
   priority: 0
   trackView: 1
   rootView: 1
+  groupMask: 1
   exclusiveView: 0
   hideOtherViews: 0
   preventSelection: 0
@@ -1833,9 +1837,10 @@ MonoBehaviour:
   playerInput: {fileID: 0}
   playerIndex: 0
   applyToAllPlayers: 0
-  enableActionMaps:
-  - UI
-  disableActionMaps: []
+  onEnabledActionMaps:
+  - actionMapName: UI
+    enable: 1
+  onDisabledActionMaps: []
 --- !u!1 &889648226
 GameObject:
   m_ObjectHideFlags: 0
@@ -2931,9 +2936,10 @@ MonoBehaviour:
   playerInput: {fileID: 210860399}
   playerIndex: 0
   applyToAllPlayers: 0
-  enableActionMaps:
-  - UI
-  disableActionMaps: []
+  onEnabledActionMaps:
+  - actionMapName: UI
+    enable: 1
+  onDisabledActionMaps: []
 --- !u!114 &1735861506
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3612,6 +3618,7 @@ MonoBehaviour:
   priority: 0
   trackView: 1
   rootView: 0
+  groupMask: 1
   exclusiveView: 0
   hideOtherViews: 0
   preventSelection: 0

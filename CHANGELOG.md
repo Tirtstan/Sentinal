@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.0] - 2026-02-13
+
+### Added
+
+- **Grouping!** - Added view grouping system to filter exclusive/hide behaviors.
+    - **SentinalViewGroups (ViewGroupConfig)**: New ScriptableObject asset (auto-created at `Assets/Resources/SentinalViewGroups.asset`) for managing view groups. Also creatable via `Assets > Create > Sentinal > View Groups`.
+    - **ViewSelector Grouping**: Added "Grouping" header section to `ViewSelector` with:
+        - `groupMask` field: Bitmask selection (similar to Unity's LayerMask) for choosing which groups this view belongs to.
+        - `exclusiveView` and `hideOtherViews` toggles moved under "Grouping" header.
+    - **Grouping inspector UX**:
+        - Group mask dropdown pulls names from the shared `SentinalViewGroups` asset.
+        - If the asset is missing, it is auto-created; if still unavailable, the group mask field is hidden.
+        - The mask can be set to "Nothing" to opt out of grouping for that view (does not participate in group-based hide/close).
+    - **Group-filtered behavior**:
+        - `exclusiveView` now only closes views within the same group(s) when a non-negative group mask is provided; a mask of `0` (Nothing) will not close any other groups.
+        - `hideOtherViews` now only hides views within the same group(s) when grouping is configured; a mask of `0` (Nothing) will not hide any other groups.
+
+### Changed
+
+- **ViewSelector**:
+    - `exclusiveView` and `hideOtherViews` toggles moved to the new "Grouping" header section.
+    - Uses the shared `SentinalViewGroups` asset for group names.
+- **SentinalManager**:
+    - `CloseAllViews()` now has an overload `CloseAllViews(int groupMask, bool excludeRootViews = false)` for group filtering.
+    - `HideAllViews(ViewSelector excludeView)` now filters by groups based on the view's `GroupMask`.
+- **IViewSelector**: Added `GroupMask` property to interface.
+
 ## [3.1.4] - 2026-02-12
 
 ### Fixed
