@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.1] - 2026-02-14
+
+## Changed
+
+- **ActionMapManager**:
+    - Removed all action map history tracking. _Was just causing so many conflicting issues, rather use `ViewSelector`'s `onEnabledActionMaps` and `onDisabledActionMaps` to configure action maps._
+
+- **ViewInputSystemHandler**:
+    - When one action map is counted, it is treated as exclusive and toggles the affected `PlayerInput`s' action map(s). e.g If action map "UI" is the only enabled action map, every other action map will be disabled on `PlayerInput`(s).
+
 ## [3.2.0] - 2026-02-13
 
 ### Added

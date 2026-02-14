@@ -53,7 +53,6 @@ namespace Sentinal.InputSystem
         private ActionMapConfig[] onDisabledActionMaps = Array.Empty<ActionMapConfig>();
 
         private bool inputEnabled = true;
-        private bool hasAppliedActionMaps = false;
 
         /// <summary>
         /// Gets or sets whether input is only enabled when the ViewSelector is current.
@@ -101,24 +100,12 @@ namespace Sentinal.InputSystem
             {
                 EnableInput();
             }
-
-            if (!HasViewSelectorOnSameObject() && HasActionMapsConfigured() && ActionMapManager.Instance != null)
-            {
-                ActionMapManager.Instance.ApplyActionMaps(this);
-                hasAppliedActionMaps = true;
-            }
         }
 
         private void OnDisable()
         {
             if (inputOnlyWhenCurrent)
                 SentinalManager.OnSwitch -= OnViewSwitch;
-
-            if (hasAppliedActionMaps && ActionMapManager.Instance != null)
-            {
-                ActionMapManager.Instance.RestoreActionMaps(this);
-                hasAppliedActionMaps = false;
-            }
         }
 
         private void OnViewSwitch(ViewSelector previousView, ViewSelector newView)
@@ -172,12 +159,6 @@ namespace Sentinal.InputSystem
         public bool HasActionMapsConfigured() =>
             (onEnabledActionMaps != null && onEnabledActionMaps.Length > 0)
             || (onDisabledActionMaps != null && onDisabledActionMaps.Length > 0);
-
-        /// <summary>
-        /// Checks if there's a ViewSelector on the same GameObject.
-        /// When present, ActionMapManager handles action maps via view switching.
-        /// </summary>
-        private bool HasViewSelectorOnSameObject() => viewSelector != null && viewSelector.gameObject == gameObject;
 
         public override void EnableInput()
         {
