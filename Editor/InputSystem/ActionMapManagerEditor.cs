@@ -46,55 +46,6 @@ namespace Sentinal.Editor
 
             EditorGUILayout.Space(4);
 
-            // History section (one entry per view selector / source; same selector overwrites)
-            ActionMapManager manager = target as ActionMapManager;
-            var history = manager.GetHistory();
-            history.Sort((a, b) => string.Compare(a.source, b.source, System.StringComparison.Ordinal));
-
-            EditorGUILayout.BeginHorizontal();
-            showHistoryFoldout = EditorGUILayout.Foldout(
-                showHistoryFoldout,
-                $"Action maps per view ({history.Count})",
-                true,
-                EditorStyles.foldoutHeader
-            );
-
-            if (history.Count > 0 && GUILayout.Button("Clear", GUILayout.Width(50)))
-            {
-                manager.ClearHistory();
-            }
-            EditorGUILayout.EndHorizontal();
-
-            if (showHistoryFoldout)
-            {
-                if (history.Count == 0)
-                {
-                    EditorGUILayout.HelpBox("No action map state recorded yet.", MessageType.Info);
-                }
-                else
-                {
-                    EditorGUILayout.Space(2);
-                    foreach (var entry in history)
-                    {
-                        DrawInfoBox(() =>
-                        {
-                            var actionStyle = new GUIStyle(EditorStyles.miniLabel);
-                            if (entry.action == ActionMapAction.Enable)
-                                actionStyle.normal.textColor = SentinalEditorColors.AccentColor;
-
-                            EditorGUILayout.LabelField(
-                                $"{entry.source}  |  Player {entry.playerIndex}  {entry.action}: {string.Join(", ", entry.mapNames)}",
-                                actionStyle
-                            );
-                        });
-
-                        EditorGUILayout.Space(2);
-                    }
-                }
-            }
-
-            EditorGUILayout.Space(4);
-
             // Player details
             foreach (var player in PlayerInput.all)
             {

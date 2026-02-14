@@ -1,23 +1,12 @@
 #if ENABLE_INPUT_SYSTEM
 using System;
-using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using UnityEngine.SceneManagement;
 
 namespace Sentinal.InputSystem
 {
-    /// <summary>
-    /// Represents an action taken on an action map.
-    /// </summary>
-    public enum ActionMapAction
-    {
-        Enable,
-        Disable,
-        Restore,
-    }
-
     public class ActionMapManager : MonoBehaviour
     {
         public static ActionMapManager Instance { get; private set; }
@@ -26,15 +15,6 @@ namespace Sentinal.InputSystem
         {
             public PlayerInput playerInput;
             public Dictionary<string, bool> state = new();
-        }
-
-        public class ActionMapHistoryEntry
-        {
-            public float timestamp;
-            public int playerIndex;
-            public ActionMapAction action;
-            public List<string> mapNames = new();
-            public string source; // Handler/View name
         }
 
         [Header("Default Action Maps")]
@@ -48,9 +28,7 @@ namespace Sentinal.InputSystem
         [Tooltip("Action maps to apply when no non-root views are open.")]
         private ActionMapConfig[] defaultActionMaps = Array.Empty<ActionMapConfig>();
 
-        private readonly List<ActionMapSnapshot> baselineStates = new();
         private readonly Dictionary<ViewInputSystemHandler, List<ActionMapSnapshot>> handlerSnapshots = new();
-        private readonly Dictionary<string, ActionMapHistoryEntry> historyBySource = new();
         private readonly List<ActionMapSnapshot> defaultActionMapSnapshots = new();
         private readonly Dictionary<ViewSelector, ViewInputSystemHandler> handlerCache = new();
         private bool defaultsApplied = false;
@@ -67,7 +45,6 @@ namespace Sentinal.InputSystem
             SentinalManager.OnSwitch += OnViewSwitch;
             SentinalManager.OnRemove += OnViewRemoved;
             SentinalManager.OnAdd += OnViewAdded;
-            SceneManager.sceneLoaded += OnSceneLoaded;
         }
 
         private void Start()
@@ -80,32 +57,11 @@ namespace Sentinal.InputSystem
             SentinalManager.OnSwitch -= OnViewSwitch;
             SentinalManager.OnRemove -= OnViewRemoved;
             SentinalManager.OnAdd -= OnViewAdded;
-            SceneManager.sceneLoaded -= OnSceneLoaded;
-        }
-
-        private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
-        {
-            ClearStateForNewScene();
-        }
-
-        /// <summary>
-        /// Clears cached baselines, handler snapshots, and default snapshots so the manager
-        /// does not hold references to destroyed PlayerInput/ViewInputSystemHandlers after a scene load.
-        /// Call this (or rely on scene load) when using DontDestroyOnLoad so new scenes get a clean state.
-        /// </summary>
-        public void ClearStateForNewScene()
-        {
-            baselineStates.Clear();
-            handlerSnapshots.Clear();
-            handlerCache.Clear();
-            historyBySource.Clear();
-            defaultActionMapSnapshots.Clear();
-            defaultsApplied = false;
         }
 
         private void OnViewSwitch(ViewSelector previousView, ViewSelector newView)
         {
-            // Only modify action maps when the target view explicitly has a handler.
+            // Only modify action maps when the target view explicitly has a handler on the same GameObject.
             if (newView != null && TryGetCachedHandler(newView, out ViewInputSystemHandler newHandler))
             {
                 if (previousView != null && TryGetCachedHandler(previousView, out ViewInputSystemHandler prevHandler))
@@ -128,7 +84,8 @@ namespace Sentinal.InputSystem
             if (handlerCache.TryGetValue(view, out handler))
                 return handler != null;
 
-            bool found = view.TryGetComponent(out handler);
+            // Only cache handlers that are on the same GameObject as the ViewSelector
+            bool found = view.TryGetComponent(out handler) && handler != null;
             handlerCache[view] = found ? handler : null;
             return found;
         }
@@ -216,9 +173,6 @@ namespace Sentinal.InputSystem
 
             defaultActionMapSnapshots.Clear();
 
-            List<string> enabledMaps = new();
-            List<string> disabledMaps = new();
-
             foreach (PlayerInput player in PlayerInput.all)
             {
                 if (player == null || player.actions == null)
@@ -227,42 +181,17 @@ namespace Sentinal.InputSystem
                 ActionMapSnapshot snapshot = new() { playerInput = player };
                 defaultActionMapSnapshots.Add(snapshot);
 
-                string firstEnabled = null;
-
                 foreach (ActionMapConfig config in defaultActionMaps)
                 {
                     if (string.IsNullOrEmpty(config.actionMapName))
                         continue;
 
                     InputActionMap map = player.actions.FindActionMap(config.actionMapName);
-                    if (map == null)
-                        continue;
-
-                    snapshot.state[config.actionMapName] = map.enabled;
-
-                    if (config.enable && !map.enabled)
-                    {
-                        map.Enable();
-                        firstEnabled ??= config.actionMapName;
-                        enabledMaps.Add(config.actionMapName);
-                    }
-                    else if (!config.enable && map.enabled)
-                    {
-                        map.Disable();
-                        disabledMaps.Add(config.actionMapName);
-                    }
+                    if (map != null)
+                        snapshot.state[config.actionMapName] = map.enabled;
                 }
 
-                if (enabledMaps.Count > 0)
-                    AddHistoryEntry(player.playerIndex, ActionMapAction.Enable, enabledMaps, "DefaultActionMaps");
-                if (disabledMaps.Count > 0)
-                    AddHistoryEntry(player.playerIndex, ActionMapAction.Disable, disabledMaps, "DefaultActionMaps");
-
-                enabledMaps.Clear();
-                disabledMaps.Clear();
-
-                if (firstEnabled != null)
-                    player.SwitchCurrentActionMap(firstEnabled);
+                ApplyActionMapsToPlayer(player, defaultActionMaps);
             }
 
             defaultsApplied = true;
@@ -275,62 +204,11 @@ namespace Sentinal.InputSystem
                 if (snapshot.playerInput == null || snapshot.playerInput.actions == null)
                     continue;
 
-                List<string> restoredMaps = new();
-
-                foreach (var mapState in snapshot.state)
-                {
-                    InputActionMap map = snapshot.playerInput.actions.FindActionMap(mapState.Key);
-                    if (map == null)
-                        continue;
-
-                    if (mapState.Value && !map.enabled)
-                    {
-                        map.Enable();
-                        restoredMaps.Add(mapState.Key);
-                    }
-                    else if (!mapState.Value && map.enabled)
-                    {
-                        map.Disable();
-                        restoredMaps.Add(mapState.Key);
-                    }
-                }
-
-                if (restoredMaps.Count > 0)
-                {
-                    AddHistoryEntry(
-                        snapshot.playerInput.playerIndex,
-                        ActionMapAction.Restore,
-                        restoredMaps,
-                        "DefaultActionMaps"
-                    );
-                }
+                RestoreSnapshotToPlayer(snapshot);
             }
 
             defaultActionMapSnapshots.Clear();
             defaultsApplied = false;
-        }
-
-        /// <summary>
-        /// Applies action maps for a handler. Call this when the handler becomes active.
-        /// </summary>
-        public void ApplyActionMaps(ViewInputSystemHandler handler)
-        {
-            if (handler == null)
-                return;
-
-            ApplyHandler(handler);
-        }
-
-        /// <summary>
-        /// Restores action maps for a handler. Call this when the handler becomes inactive.
-        /// </summary>
-        public void RestoreActionMaps(ViewInputSystemHandler handler)
-        {
-            if (handler == null)
-                return;
-
-            RestoreHandler(handler);
-            handlerSnapshots.Remove(handler);
         }
 
         private void ApplyHandler(ViewInputSystemHandler handler)
@@ -347,24 +225,13 @@ namespace Sentinal.InputSystem
             if (!handlerSnapshots.ContainsKey(handler))
                 handlerSnapshots[handler] = new();
 
-            string sourceName = handler.gameObject.name;
-            if (handler.ViewSelector != null)
-                sourceName = handler.ViewSelector.name;
-
             foreach (PlayerInput player in players)
             {
                 if (player == null || player.actions == null)
                     continue;
 
-                if (baselineStates.Find(s => s.playerInput == player) == null)
-                    CaptureBaseline(player);
-
                 ActionMapSnapshot snapshot = new() { playerInput = player };
                 handlerSnapshots[handler].Add(snapshot);
-
-                string firstEnabled = null;
-                List<string> enabledMaps = new();
-                List<string> disabledMaps = new();
 
                 foreach (ActionMapConfig config in actionMaps)
                 {
@@ -372,41 +239,16 @@ namespace Sentinal.InputSystem
                         continue;
 
                     InputActionMap map = player.actions.FindActionMap(config.actionMapName);
-                    if (map == null)
-                        continue;
-
-                    snapshot.state[config.actionMapName] = map.enabled;
-
-                    if (config.enable && !map.enabled)
-                    {
-                        map.Enable();
-                        firstEnabled ??= config.actionMapName;
-                        enabledMaps.Add(config.actionMapName);
-                    }
-                    else if (!config.enable && map.enabled)
-                    {
-                        map.Disable();
-                        disabledMaps.Add(config.actionMapName);
-                    }
+                    if (map != null)
+                        snapshot.state[config.actionMapName] = map.enabled;
                 }
 
-                if (enabledMaps.Count > 0)
-                    AddHistoryEntry(player.playerIndex, ActionMapAction.Enable, enabledMaps, sourceName);
-                if (disabledMaps.Count > 0)
-                    AddHistoryEntry(player.playerIndex, ActionMapAction.Disable, disabledMaps, sourceName);
-
-                if (firstEnabled != null)
-                    player.SwitchCurrentActionMap(firstEnabled);
+                ApplyActionMapsToPlayer(player, actionMaps);
             }
         }
 
         private void RestoreHandler(ViewInputSystemHandler handler)
         {
-            string sourceName = handler.gameObject.name;
-            if (handler.ViewSelector != null)
-                sourceName = handler.ViewSelector.name;
-
-            // First, restore from snapshot if we have one
             if (handlerSnapshots.TryGetValue(handler, out List<ActionMapSnapshot> snapshots))
             {
                 foreach (var snapshot in snapshots)
@@ -414,39 +256,10 @@ namespace Sentinal.InputSystem
                     if (snapshot.playerInput == null || snapshot.playerInput.actions == null)
                         continue;
 
-                    List<string> restoredMaps = new();
-
-                    foreach (var mapState in snapshot.state)
-                    {
-                        InputActionMap map = snapshot.playerInput.actions.FindActionMap(mapState.Key);
-                        if (map == null)
-                            continue;
-
-                        if (mapState.Value && !map.enabled)
-                        {
-                            map.Enable();
-                            restoredMaps.Add(mapState.Key);
-                        }
-                        else if (!mapState.Value && map.enabled)
-                        {
-                            map.Disable();
-                            restoredMaps.Add(mapState.Key);
-                        }
-                    }
-
-                    if (restoredMaps.Count > 0)
-                    {
-                        AddHistoryEntry(
-                            snapshot.playerInput.playerIndex,
-                            ActionMapAction.Restore,
-                            restoredMaps,
-                            sourceName
-                        );
-                    }
+                    RestoreSnapshotToPlayer(snapshot);
                 }
             }
 
-            // Then apply onDisabledActionMaps if configured
             ActionMapConfig[] onDisabledMaps = handler.GetOnDisabledActionMaps();
             if (onDisabledMaps == null || onDisabledMaps.Length == 0)
                 return;
@@ -458,11 +271,32 @@ namespace Sentinal.InputSystem
                 if (player == null || player.actions == null)
                     continue;
 
-                List<string> enabledMaps = new();
-                List<string> disabledMaps = new();
-                string firstEnabled = null;
+                ApplyActionMapsToPlayer(player, onDisabledMaps);
+            }
+        }
 
-                foreach (ActionMapConfig config in onDisabledMaps)
+        /// <summary>
+        /// Applies action maps to a player. Uses SwitchCurrentActionMap when only one map is enabled,
+        /// otherwise uses Enable/Disable for multiple maps.
+        /// </summary>
+        private void ApplyActionMapsToPlayer(PlayerInput player, ActionMapConfig[] configs)
+        {
+            if (player == null || player.actions == null || configs == null || configs.Length == 0)
+                return;
+
+            int enabledCount = configs.Count(c => c.enable && !string.IsNullOrEmpty(c.actionMapName));
+
+            if (enabledCount == 1)
+            {
+                string mapName = configs.First(c => c.enable && !string.IsNullOrEmpty(c.actionMapName)).actionMapName;
+                InputActionMap map = player.actions.FindActionMap(mapName);
+                if (map != null)
+                    player.SwitchCurrentActionMap(mapName);
+            }
+            else
+            {
+                string firstEnabled = null;
+                foreach (ActionMapConfig config in configs)
                 {
                     if (string.IsNullOrEmpty(config.actionMapName))
                         continue;
@@ -475,48 +309,49 @@ namespace Sentinal.InputSystem
                     {
                         map.Enable();
                         firstEnabled ??= config.actionMapName;
-                        enabledMaps.Add(config.actionMapName);
                     }
                     else if (!config.enable && map.enabled)
                     {
                         map.Disable();
-                        disabledMaps.Add(config.actionMapName);
                     }
                 }
 
-                if (enabledMaps.Count > 0)
-                {
-                    AddHistoryEntry(
-                        player.playerIndex,
-                        ActionMapAction.Enable,
-                        enabledMaps,
-                        sourceName + " (OnDisabled)"
-                    );
-                }
-                if (disabledMaps.Count > 0)
-                {
-                    AddHistoryEntry(
-                        player.playerIndex,
-                        ActionMapAction.Disable,
-                        disabledMaps,
-                        sourceName + " (OnDisabled)"
-                    );
-                }
-
+                // Switch to first enabled map if any
                 if (firstEnabled != null)
                     player.SwitchCurrentActionMap(firstEnabled);
             }
         }
 
-        private void CaptureBaseline(PlayerInput player)
+        /// <summary>
+        /// Restores action map state from a snapshot.
+        /// </summary>
+        private void RestoreSnapshotToPlayer(ActionMapSnapshot snapshot)
         {
-            if (player == null || player.actions == null)
+            if (snapshot.playerInput == null || snapshot.playerInput.actions == null)
                 return;
 
-            ActionMapSnapshot snapshot = new() { playerInput = player };
-            baselineStates.Add(snapshot);
-            foreach (InputActionMap map in player.actions.actionMaps)
-                snapshot.state[map.name] = map.enabled;
+            string firstEnabled = null;
+
+            foreach (var mapState in snapshot.state)
+            {
+                InputActionMap map = snapshot.playerInput.actions.FindActionMap(mapState.Key);
+                if (map == null)
+                    continue;
+
+                if (mapState.Value && !map.enabled)
+                {
+                    map.Enable();
+                    firstEnabled ??= mapState.Key;
+                }
+                else if (!mapState.Value && map.enabled)
+                {
+                    map.Disable();
+                }
+            }
+
+            // Switch to first enabled map if any
+            if (firstEnabled != null)
+                snapshot.playerInput.SwitchCurrentActionMap(firstEnabled);
         }
 
         private List<PlayerInput> GetPlayers(ViewInputSystemHandler handler)
@@ -532,67 +367,6 @@ namespace Sentinal.InputSystem
             }
 
             return players;
-        }
-
-        public void RestoreBaseline(PlayerInput player)
-        {
-            if (player == null || player.actions == null)
-                return;
-
-            ActionMapSnapshot baseline = baselineStates.Find(s => s.playerInput == player);
-            if (baseline == null)
-                return;
-
-            string firstEnabled = null;
-            foreach (var mapState in baseline.state)
-            {
-                InputActionMap map = player.actions.FindActionMap(mapState.Key);
-                if (map == null)
-                    continue;
-
-                if (mapState.Value && !map.enabled)
-                {
-                    map.Enable();
-                    firstEnabled ??= mapState.Key;
-                }
-                else if (!mapState.Value && map.enabled)
-                {
-                    map.Disable();
-                }
-            }
-
-            if (firstEnabled != null)
-                player.SwitchCurrentActionMap(firstEnabled);
-        }
-
-        private void AddHistoryEntry(int playerIndex, ActionMapAction action, List<string> mapNames, string source)
-        {
-            var entry = new ActionMapHistoryEntry
-            {
-                timestamp = Time.time,
-                playerIndex = playerIndex,
-                action = action,
-                mapNames = new List<string>(mapNames),
-                source = source,
-            };
-
-            historyBySource[source] = entry;
-        }
-
-        /// <summary>
-        /// Gets the latest action map state per view selector (source). Same selector overwrites the previous entry.
-        /// </summary>
-        public List<ActionMapHistoryEntry> GetHistory()
-        {
-            return new List<ActionMapHistoryEntry>(historyBySource.Values);
-        }
-
-        /// <summary>
-        /// Clears the action map state history.
-        /// </summary>
-        public void ClearHistory()
-        {
-            historyBySource.Clear();
         }
     }
 }
