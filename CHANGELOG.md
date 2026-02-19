@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.2] - 2026-02-19
+
+### Fixed
+
+- **ActionMapManager**:
+    - Now bootstraps handler cache at `Start()` with any views already open in the scene using `GetViewHistory()`, preventing premature default action map application.
+    - Deferred `CheckAndApplyDefaults()` by one frame in `OnViewRemoved()` to allow `OnViewAdded()` to complete the add-remove-add sequence atomically before evaluating defaults.
+
+### Added
+
+- **ActionMapManager**:
+    - Added `defaultsRequireAllViewsGone` toggle to control default action map behavior:
+        - When false (default): Defaults apply only when non-root views with handlers are gone (root views don't block defaults).
+        - When true: Defaults apply only when ALL views with input handlers are gone (including root views).
+
 ## [3.2.1] - 2026-02-14
 
 ## Changed
