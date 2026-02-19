@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using System.Collections;
 
 namespace Sentinal.InputSystem
 {
@@ -19,10 +20,14 @@ namespace Sentinal.InputSystem
 
         [Header("Default Action Maps")]
         [SerializeField]
-        [Tooltip(
-            "If true, applies defaultActionMaps when no non-root views are open. If false, uses current in-memory state."
-        )]
+        [Tooltip("If true, applies defaultActionMaps when no non-root views are open.")]
         private bool useDefaultActionMaps = true;
+
+        [SerializeField]
+        [Tooltip(
+            "If true, defaults apply when ALL views with handlers are gone. If false, defaults apply only when non-root views are gone (root views don't block defaults)."
+        )]
+        private bool defaultsRequireAllViewsGone;
 
         [SerializeField]
         [Tooltip("Action maps to apply when no non-root views are open.")]
@@ -49,6 +54,15 @@ namespace Sentinal.InputSystem
 
         private void Start()
         {
+            if (SentinalManager.Instance != null)
+            {
+                foreach (var view in SentinalManager.Instance.GetViewHistory())
+                {
+                    if (view != null)
+                        TryGetCachedHandler(view, out _);
+                }
+            }
+
             CheckAndApplyDefaults();
         }
 
@@ -91,14 +105,28 @@ namespace Sentinal.InputSystem
         }
 
         /// <summary>
-        /// Checks if there are any non-root views in the cache that manage input.
+        /// Checks if there are any views (root or non-root) in the cache that manage input.
         /// Views without a handler are never cached, so this is a fast dictionary iteration.
+        /// </summary>
+        private bool AnyViewsWithInputHandlersOpen()
+        {
+            foreach (var kvp in handlerCache)
+            {
+                if (kvp.Key != null && kvp.Value != null)
+                    return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Checks if there are any non-root views in the cache that manage input.
         /// </summary>
         private bool AnyNonRootViewsWithInputHandlersOpen()
         {
             foreach (var kvp in handlerCache)
             {
-                if (kvp.Key != null && !kvp.Key.RootView && kvp.Value != null)
+                if (kvp.Key != null && kvp.Value != null && !kvp.Key.RootView)
                     return true;
             }
 
@@ -133,6 +161,12 @@ namespace Sentinal.InputSystem
                     ApplyHandler(currentHandler);
             }
 
+            StartCoroutine(DeferredCheckAndApplyDefaults());
+        }
+
+        private IEnumerator DeferredCheckAndApplyDefaults()
+        {
+            yield return null;
             CheckAndApplyDefaults();
         }
 
@@ -149,12 +183,9 @@ namespace Sentinal.InputSystem
                 return;
             }
 
-            // Decide whether defaults should be active:
-            // - If Sentinal reports no non-root views open at all, always apply defaults.
-            // - Otherwise, only consider non-root views that actually have a ViewInputSystemHandler;
-            //   views without input management should not influence default action maps.
-            bool shouldApplyDefaults =
-                !SentinalManager.Instance.AnyNonRootViewsOpen || !AnyNonRootViewsWithInputHandlersOpen();
+            bool shouldApplyDefaults = defaultsRequireAllViewsGone
+                ? !AnyViewsWithInputHandlersOpen()
+                : !AnyNonRootViewsWithInputHandlersOpen();
 
             if (shouldApplyDefaults && !defaultsApplied)
             {
