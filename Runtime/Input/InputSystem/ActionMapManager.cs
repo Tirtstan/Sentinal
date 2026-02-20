@@ -12,10 +12,16 @@ namespace Sentinal.InputSystem
     {
         public static ActionMapManager Instance { get; private set; }
 
-        private class ActionMapSnapshot
+        private struct ActionMapSnapshot
         {
-            public PlayerInput playerInput;
-            public Dictionary<string, bool> state = new();
+            public PlayerInput PlayerInput;
+            public Dictionary<string, bool> State;
+
+            public ActionMapSnapshot(PlayerInput playerInput)
+            {
+                PlayerInput = playerInput;
+                State = new Dictionary<string, bool>();
+            }
         }
 
         [Header("Default Action Maps")]
@@ -110,10 +116,18 @@ namespace Sentinal.InputSystem
         /// </summary>
         private bool AnyViewsWithInputHandlersOpen()
         {
-            foreach (var kvp in handlerCache)
+            foreach (var kvp in handlerCache.ToList())
             {
-                if (kvp.Key != null && kvp.Value != null)
+                bool viewExists = kvp.Key != null;
+                bool handlerExists = kvp.Value != null;
+                bool viewIsActive = viewExists && kvp.Key.gameObject.activeSelf;
+                bool viewIsValid = viewExists && handlerExists && viewIsActive;
+
+                if (viewIsValid)
                     return true;
+
+                if (!viewIsValid)
+                    handlerCache.Remove(kvp.Key);
             }
 
             return false;
@@ -124,10 +138,19 @@ namespace Sentinal.InputSystem
         /// </summary>
         private bool AnyNonRootViewsWithInputHandlersOpen()
         {
-            foreach (var kvp in handlerCache)
+            foreach (var kvp in handlerCache.ToList())
             {
-                if (kvp.Key != null && kvp.Value != null && !kvp.Key.RootView)
+                bool viewExists = kvp.Key != null;
+                bool handlerExists = kvp.Value != null;
+                bool viewIsActive = viewExists && kvp.Key.gameObject.activeSelf;
+                bool viewIsValid = viewExists && handlerExists && viewIsActive;
+                bool isNonRoot = viewIsValid && !kvp.Key.RootView;
+
+                if (viewIsValid && isNonRoot)
                     return true;
+
+                if (!viewIsValid)
+                    handlerCache.Remove(kvp.Key);
             }
 
             return false;
@@ -153,13 +176,6 @@ namespace Sentinal.InputSystem
             }
 
             handlerCache.Remove(view);
-
-            if (SentinalManager.Instance != null && SentinalManager.Instance.AnyViewsOpen)
-            {
-                ViewSelector currentView = SentinalManager.Instance.CurrentView;
-                if (currentView != null && TryGetCachedHandler(currentView, out ViewInputSystemHandler currentHandler))
-                    ApplyHandler(currentHandler);
-            }
 
             StartCoroutine(DeferredCheckAndApplyDefaults());
         }
@@ -202,6 +218,7 @@ namespace Sentinal.InputSystem
             if (defaultActionMaps == null || defaultActionMaps.Length == 0)
                 return;
 
+            handlerSnapshots.Clear();
             defaultActionMapSnapshots.Clear();
 
             foreach (PlayerInput player in PlayerInput.all)
@@ -209,7 +226,7 @@ namespace Sentinal.InputSystem
                 if (player == null || player.actions == null)
                     continue;
 
-                ActionMapSnapshot snapshot = new() { playerInput = player };
+                var snapshot = new ActionMapSnapshot(player);
                 defaultActionMapSnapshots.Add(snapshot);
 
                 foreach (ActionMapConfig config in defaultActionMaps)
@@ -219,7 +236,7 @@ namespace Sentinal.InputSystem
 
                     InputActionMap map = player.actions.FindActionMap(config.actionMapName);
                     if (map != null)
-                        snapshot.state[config.actionMapName] = map.enabled;
+                        snapshot.State[config.actionMapName] = map.enabled;
                 }
 
                 ApplyActionMapsToPlayer(player, defaultActionMaps);
@@ -232,7 +249,7 @@ namespace Sentinal.InputSystem
         {
             foreach (var snapshot in defaultActionMapSnapshots)
             {
-                if (snapshot.playerInput == null || snapshot.playerInput.actions == null)
+                if (snapshot.PlayerInput == null || snapshot.PlayerInput.actions == null)
                     continue;
 
                 RestoreSnapshotToPlayer(snapshot);
@@ -253,15 +270,14 @@ namespace Sentinal.InputSystem
                 return;
 
             List<PlayerInput> players = GetPlayers(handler);
-            if (!handlerSnapshots.ContainsKey(handler))
-                handlerSnapshots[handler] = new();
+            handlerSnapshots[handler] = new();
 
             foreach (PlayerInput player in players)
             {
                 if (player == null || player.actions == null)
                     continue;
 
-                ActionMapSnapshot snapshot = new() { playerInput = player };
+                var snapshot = new ActionMapSnapshot(player);
                 handlerSnapshots[handler].Add(snapshot);
 
                 foreach (ActionMapConfig config in actionMaps)
@@ -271,7 +287,7 @@ namespace Sentinal.InputSystem
 
                     InputActionMap map = player.actions.FindActionMap(config.actionMapName);
                     if (map != null)
-                        snapshot.state[config.actionMapName] = map.enabled;
+                        snapshot.State[config.actionMapName] = map.enabled;
                 }
 
                 ApplyActionMapsToPlayer(player, actionMaps);
@@ -280,11 +296,14 @@ namespace Sentinal.InputSystem
 
         private void RestoreHandler(ViewInputSystemHandler handler)
         {
+            if (handler == null)
+                return;
+
             if (handlerSnapshots.TryGetValue(handler, out List<ActionMapSnapshot> snapshots))
             {
                 foreach (var snapshot in snapshots)
                 {
-                    if (snapshot.playerInput == null || snapshot.playerInput.actions == null)
+                    if (snapshot.PlayerInput == null || snapshot.PlayerInput.actions == null)
                         continue;
 
                     RestoreSnapshotToPlayer(snapshot);
@@ -358,14 +377,14 @@ namespace Sentinal.InputSystem
         /// </summary>
         private void RestoreSnapshotToPlayer(ActionMapSnapshot snapshot)
         {
-            if (snapshot.playerInput == null || snapshot.playerInput.actions == null)
+            if (snapshot.PlayerInput == null || snapshot.PlayerInput.actions == null)
                 return;
 
             string firstEnabled = null;
 
-            foreach (var mapState in snapshot.state)
+            foreach (var mapState in snapshot.State)
             {
-                InputActionMap map = snapshot.playerInput.actions.FindActionMap(mapState.Key);
+                InputActionMap map = snapshot.PlayerInput.actions.FindActionMap(mapState.Key);
                 if (map == null)
                     continue;
 
@@ -382,7 +401,7 @@ namespace Sentinal.InputSystem
 
             // Switch to first enabled map if any
             if (firstEnabled != null)
-                snapshot.playerInput.SwitchCurrentActionMap(firstEnabled);
+                snapshot.PlayerInput.SwitchCurrentActionMap(firstEnabled);
         }
 
         private List<PlayerInput> GetPlayers(ViewInputSystemHandler handler)

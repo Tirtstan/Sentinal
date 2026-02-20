@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.3] - 2026-02-20
+
+### Fixed
+
+- **ActionMapManager**:
+    - Fixed multi-view action map switching bug where disabled (inactive) views were still cached as valid, preventing default action maps from applying.
+    - Now checks `gameObject.activeSelf` when evaluating active views and automatically cleans up inactive entries from the handler cache.
+    - Removed redundant re-application of handlers in `OnViewRemoved()` that was corrupting snapshot chains with multiple views.
+
+### Changed
+
+- **ActionMapManager**:
+    - Converted `ActionMapSnapshot` from class to struct for improved performance.
+    - Updated struct properties to PascalCase (`PlayerInput`, `State`) and added explicit constructor.
+
 ## [3.2.2] - 2026-02-19
 
 ### Fixed
