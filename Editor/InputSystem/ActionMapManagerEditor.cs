@@ -11,7 +11,6 @@ namespace Sentinal.Editor
     public class ActionMapManagerEditor : UnityEditor.Editor
     {
         private readonly Dictionary<int, bool> playerFoldouts = new();
-        private bool showHistoryFoldout = false;
         private SerializedProperty useDefaultActionMapsProperty;
         private SerializedProperty defaultActionMapsProperty;
 
