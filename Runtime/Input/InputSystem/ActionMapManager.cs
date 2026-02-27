@@ -81,16 +81,27 @@ namespace Sentinal.InputSystem
 
         private void OnViewSwitch(ViewSelector previousView, ViewSelector newView)
         {
-            // Only modify action maps when the target view explicitly has a handler on the same GameObject.
+            // always restore previous handler if it has one, regardless of whether new view has a handler
+            if (previousView != null && TryGetCachedHandler(previousView, out ViewInputSystemHandler prevHandler))
+                RestoreHandler(prevHandler);
+
+            bool handlerApplied = false;
+
             if (newView != null && TryGetCachedHandler(newView, out ViewInputSystemHandler newHandler))
             {
-                if (previousView != null && TryGetCachedHandler(previousView, out ViewInputSystemHandler prevHandler))
-                    RestoreHandler(prevHandler);
+                // if the handler already has a saved snapshot, re-apply its configs without overwriting
+                // the original snapshot (this happens when a view becomes current again after another closes)
+                if (handlerSnapshots.ContainsKey(newHandler))
+                    ReapplyHandler(newHandler);
+                else
+                    ApplyHandler(newHandler);
 
-                ApplyHandler(newHandler);
+                handlerApplied = true;
             }
 
-            CheckAndApplyDefaults();
+            // only check defaults if no handler was applied
+            if (!handlerApplied)
+                CheckAndApplyDefaults();
         }
 
         private bool TryGetCachedHandler(ViewSelector view, out ViewInputSystemHandler handler)
@@ -104,7 +115,6 @@ namespace Sentinal.InputSystem
             if (handlerCache.TryGetValue(view, out handler))
                 return handler != null;
 
-            // Only cache handlers that are on the same GameObject as the ViewSelector
             bool found = view.TryGetComponent(out handler) && handler != null;
             handlerCache[view] = found ? handler : null;
             return found;
@@ -116,18 +126,14 @@ namespace Sentinal.InputSystem
         /// </summary>
         private bool AnyViewsWithInputHandlersOpen()
         {
-            foreach (var kvp in handlerCache.ToList())
+            foreach (var kvp in handlerCache)
             {
                 bool viewExists = kvp.Key != null;
                 bool handlerExists = kvp.Value != null;
                 bool viewIsActive = viewExists && kvp.Key.gameObject.activeSelf;
-                bool viewIsValid = viewExists && handlerExists && viewIsActive;
 
-                if (viewIsValid)
+                if (viewExists && handlerExists && viewIsActive)
                     return true;
-
-                if (!viewIsValid)
-                    handlerCache.Remove(kvp.Key);
             }
 
             return false;
@@ -138,7 +144,7 @@ namespace Sentinal.InputSystem
         /// </summary>
         private bool AnyNonRootViewsWithInputHandlersOpen()
         {
-            foreach (var kvp in handlerCache.ToList())
+            foreach (var kvp in handlerCache)
             {
                 bool viewExists = kvp.Key != null;
                 bool handlerExists = kvp.Value != null;
@@ -148,9 +154,6 @@ namespace Sentinal.InputSystem
 
                 if (viewIsValid && isNonRoot)
                     return true;
-
-                if (!viewIsValid)
-                    handlerCache.Remove(kvp.Key);
             }
 
             return false;
@@ -199,18 +202,28 @@ namespace Sentinal.InputSystem
                 return;
             }
 
+            // If the current view has an active handler with a snapshot, it's managing action maps
+            // itself — defaults must not override it (even if it's a root view).
+            ViewSelector currentView = SentinalManager.Instance.CurrentView;
+            if (
+                currentView != null
+                && TryGetCachedHandler(currentView, out var currentHandler)
+                && handlerSnapshots.ContainsKey(currentHandler)
+            )
+            {
+                if (defaultsApplied)
+                    RestoreDefaultActionMaps();
+                return;
+            }
+
             bool shouldApplyDefaults = defaultsRequireAllViewsGone
                 ? !AnyViewsWithInputHandlersOpen()
                 : !AnyNonRootViewsWithInputHandlersOpen();
 
             if (shouldApplyDefaults && !defaultsApplied)
-            {
                 ApplyDefaultActionMaps();
-            }
             else if (!shouldApplyDefaults && defaultsApplied)
-            {
                 RestoreDefaultActionMaps();
-            }
         }
 
         private void ApplyDefaultActionMaps()
@@ -218,7 +231,8 @@ namespace Sentinal.InputSystem
             if (defaultActionMaps == null || defaultActionMaps.Length == 0)
                 return;
 
-            handlerSnapshots.Clear();
+            // Do NOT clear handlerSnapshots here — those belong to individual view handlers
+            // and must be preserved for when views become current again.
             defaultActionMapSnapshots.Clear();
 
             foreach (PlayerInput player in PlayerInput.all)
@@ -294,6 +308,31 @@ namespace Sentinal.InputSystem
             }
         }
 
+        /// <summary>
+        /// Re-applies a handler's action map configs without overwriting the existing snapshot.
+        /// Used when a view becomes current again (e.g. after another view closes on top of it).
+        /// </summary>
+        private void ReapplyHandler(ViewInputSystemHandler handler)
+        {
+            if (handler == null)
+                return;
+
+            ActionMapConfig[] actionMaps = handler.GetOnEnabledActionMaps();
+
+            if (actionMaps == null || actionMaps.Length == 0)
+                return;
+
+            List<PlayerInput> players = GetPlayers(handler);
+
+            foreach (PlayerInput player in players)
+            {
+                if (player == null || player.actions == null)
+                    continue;
+
+                ApplyActionMapsToPlayer(player, actionMaps);
+            }
+        }
+
         private void RestoreHandler(ViewInputSystemHandler handler)
         {
             if (handler == null)
@@ -345,7 +384,6 @@ namespace Sentinal.InputSystem
             }
             else
             {
-                string firstEnabled = null;
                 foreach (ActionMapConfig config in configs)
                 {
                     if (string.IsNullOrEmpty(config.actionMapName))
@@ -356,19 +394,10 @@ namespace Sentinal.InputSystem
                         continue;
 
                     if (config.enable && !map.enabled)
-                    {
                         map.Enable();
-                        firstEnabled ??= config.actionMapName;
-                    }
                     else if (!config.enable && map.enabled)
-                    {
                         map.Disable();
-                    }
                 }
-
-                // Switch to first enabled map if any
-                if (firstEnabled != null)
-                    player.SwitchCurrentActionMap(firstEnabled);
             }
         }
 
@@ -380,8 +409,6 @@ namespace Sentinal.InputSystem
             if (snapshot.PlayerInput == null || snapshot.PlayerInput.actions == null)
                 return;
 
-            string firstEnabled = null;
-
             foreach (var mapState in snapshot.State)
             {
                 InputActionMap map = snapshot.PlayerInput.actions.FindActionMap(mapState.Key);
@@ -389,19 +416,10 @@ namespace Sentinal.InputSystem
                     continue;
 
                 if (mapState.Value && !map.enabled)
-                {
                     map.Enable();
-                    firstEnabled ??= mapState.Key;
-                }
                 else if (!mapState.Value && map.enabled)
-                {
                     map.Disable();
-                }
             }
-
-            // Switch to first enabled map if any
-            if (firstEnabled != null)
-                snapshot.PlayerInput.SwitchCurrentActionMap(firstEnabled);
         }
 
         private List<PlayerInput> GetPlayers(ViewInputSystemHandler handler)

@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.4] - 2026-02-27
+
+### Fixed
+
+- **ActionMapManager**:
+    - Fixed default action maps overriding the current view's handler when returning to a root view.
+    - `OnViewSwitch` no longer calls `CheckAndApplyDefaults()` when a handler was just applied — the view manages its own action maps.
+    - `CheckAndApplyDefaults()` now skips applying defaults when the current view has an active handler with a snapshot, even if the view is a root view.
+    - Stopped aggressively removing temporarily hidden (inactive) views from `handlerCache` during iteration in `AnyViewsWithInputHandlersOpen()` and `AnyNonRootViewsWithInputHandlersOpen()`. Cache cleanup now only happens in `OnViewRemoved()`.
+    - `OnViewSwitch` now always restores the previous view's handler, even if the new view has no handler.
+    - Added `ReapplyHandler()` to re-apply action maps for views becoming current again without overwriting their original snapshot.
+- **SentinalManager**:
+    - Replaced flat `hiddenViews` list with a `Stack<(ViewSelector, List<ViewSelector>)>` to correctly support nested `hideOtherViews` calls.
+    - `RestoreHiddenViews(ViewSelector owner)` now pops only the entry matching the owner, preventing nested hides from corrupting each other.
+
+### Changed
+
+- **ActionMapManager**:
+    - `ApplyDefaultActionMaps()` no longer clears `handlerSnapshots` — those belong to individual view handlers and must be preserved.
+
 ## [3.2.3] - 2026-02-20
 
 ### Fixed
