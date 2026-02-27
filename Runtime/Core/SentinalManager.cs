@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -30,7 +29,7 @@ namespace Sentinal
         public static event Action<ViewSelector, ViewSelector> OnSwitch;
 
         private readonly LinkedList<ViewSelector> viewHistory = new();
-        private readonly List<ViewSelector> hiddenViews = new();
+        private readonly Stack<(ViewSelector owner, List<ViewSelector> views)> hiddenViewStack = new();
         private readonly StringBuilder viewInfoBuilder = new();
         private bool selectionSucceeded;
 
@@ -213,7 +212,7 @@ namespace Sentinal
         /// <param name="excludeView">The view to keep active.</param>
         public void HideAllViews(int groupMask, ViewSelector excludeView)
         {
-            hiddenViews.Clear();
+            var hidden = new List<ViewSelector>();
 
             var viewsToHide = new List<ViewSelector>(viewHistory);
             foreach (var view in viewsToHide)
@@ -224,15 +223,50 @@ namespace Sentinal
                 if (groupMask >= 0 && (groupMask & view.GroupMask) == 0)
                     continue;
 
-                hiddenViews.Add(view);
+                hidden.Add(view);
                 view.SetBeingHidden(true);
                 view.gameObject.SetActive(false);
             }
+
+            hiddenViewStack.Push((excludeView, hidden));
         }
 
-        public void RestoreHiddenViews()
+        /// <summary>
+        /// Restores the most recent set of hidden views owned by the given view.
+        /// </summary>
+        /// <param name="owner">The view that initiated the hide.</param>
+        public void RestoreHiddenViews(ViewSelector owner)
         {
-            var viewsToRestore = new List<ViewSelector>(hiddenViews);
+            if (hiddenViewStack.Count == 0)
+                return;
+
+            // Find and remove the entry for this owner
+            var tempStack = new Stack<(ViewSelector owner, List<ViewSelector> views)>();
+            List<ViewSelector> viewsToRestore = null;
+
+            while (hiddenViewStack.Count > 0)
+            {
+                var entry = hiddenViewStack.Pop();
+                if (entry.owner == owner && viewsToRestore == null)
+                {
+                    viewsToRestore = entry.views;
+                    break;
+                }
+                else
+                {
+                    tempStack.Push(entry);
+                }
+            }
+
+            // Push back any entries we popped past
+            while (tempStack.Count > 0)
+                hiddenViewStack.Push(tempStack.Pop());
+
+            if (viewsToRestore == null)
+                return;
+
+            ViewSelector previousFocusedView = CurrentView;
+
             foreach (var view in viewsToRestore)
             {
                 if (view != null)
@@ -242,7 +276,22 @@ namespace Sentinal
                 }
             }
 
-            hiddenViews.Clear();
+            // Fire OnSwitch if the current view changed due to restores
+            ViewSelector newFocusedView = CurrentView;
+            if (previousFocusedView != newFocusedView)
+                OnSwitch?.Invoke(previousFocusedView, newFocusedView);
+        }
+
+        /// <summary>
+        /// Restores the topmost set of hidden views (backwards compat).
+        /// </summary>
+        public void RestoreHiddenViews()
+        {
+            if (hiddenViewStack.Count == 0)
+                return;
+
+            var entry = hiddenViewStack.Pop();
+            RestoreHiddenViews(entry.owner);
         }
 
         public bool TrySelectCurrentView()

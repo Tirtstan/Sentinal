@@ -175,7 +175,7 @@ namespace Sentinal
                 SentinalManager.Instance.Remove(this);
 
             if (hideOtherViews)
-                SentinalManager.Instance.RestoreHiddenViews();
+                SentinalManager.Instance.RestoreHiddenViews(this);
         }
 
         /// <summary>

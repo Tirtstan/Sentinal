@@ -12,11 +12,13 @@ namespace Sentinal.Editor
     {
         private readonly Dictionary<int, bool> playerFoldouts = new();
         private SerializedProperty useDefaultActionMapsProperty;
+        private SerializedProperty defaultsRequireAllViewsGoneProperty;
         private SerializedProperty defaultActionMapsProperty;
 
         private void OnEnable()
         {
             useDefaultActionMapsProperty = serializedObject.FindProperty("useDefaultActionMaps");
+            defaultsRequireAllViewsGoneProperty = serializedObject.FindProperty("defaultsRequireAllViewsGone");
             defaultActionMapsProperty = serializedObject.FindProperty("defaultActionMaps");
         }
 
@@ -25,6 +27,7 @@ namespace Sentinal.Editor
             serializedObject.Update();
 
             EditorGUILayout.PropertyField(useDefaultActionMapsProperty);
+            EditorGUILayout.PropertyField(defaultsRequireAllViewsGoneProperty);
             EditorGUILayout.PropertyField(defaultActionMapsProperty, true);
 
             serializedObject.ApplyModifiedProperties();
