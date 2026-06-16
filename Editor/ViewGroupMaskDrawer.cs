@@ -4,7 +4,7 @@ using UnityEngine;
 namespace Sentinal.Editor
 {
     /// <summary>
-    /// Custom property drawer for displaying a group mask selection UI similar to Unity's LayerMask.
+    /// Custom property drawer for displaying a group mask selection UI.
     /// </summary>
     [CustomPropertyDrawer(typeof(ViewGroupMaskAttribute))]
     public class ViewGroupMaskDrawer : PropertyDrawer
@@ -23,13 +23,17 @@ namespace Sentinal.Editor
             {
                 config = ViewGroupConfig.LoadShared();
                 if (config == null)
-                    config = ViewGroupConfig.EnsureSharedInProject();
-
-                if (config == null)
                 {
-                    Debug.LogWarning(
-                        "Failing to create/load ViewGroupConfig asset. ViewGroupMask cannot be displayed."
-                    );
+                    // Draw a button to create the config if it's missing
+                    Rect warningRect = new Rect(position.x, position.y, position.width - 100, position.height);
+                    Rect btnRect = new Rect(position.xMax - 95, position.y, 95, position.height);
+
+                    EditorGUI.LabelField(warningRect, label.text, "Config Missing");
+                    if (GUI.Button(btnRect, "Create Config"))
+                    {
+                        ViewGroupConfig.EnsureSharedInProject();
+                        config = ViewGroupConfig.LoadShared();
+                    }
                     return;
                 }
             }

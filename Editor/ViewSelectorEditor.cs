@@ -9,65 +9,117 @@ namespace Sentinal.Editor
         public override void OnInspectorGUI()
         {
             serializedObject.Update();
-            DrawPropertiesExcluding(serializedObject, "m_Script");
 
-            ViewSelector sentinalView = target as ViewSelector;
+            var view = target as ViewSelector;
+
+            if (Application.isPlaying)
+            {
+                int index = SentinalViewRouter.GetViewIndex(view);
+                bool isCurrent = SentinalViewRouter.IsCurrent(view);
+                bool isTracked = view.TrackView;
+
+                string statusText = "";
+                Color color = EditorColors.Info;
+
+                if (isCurrent)
+                {
+                    statusText += "CURRENT VIEW";
+                    color = EditorColors.Signal;
+                }
+                else if (index >= 0)
+                {
+                    statusText += "OPEN (BACKGROUND)";
+                    color = EditorColors.Connected;
+                }
+                else if (view.IsActive && !isTracked)
+                {
+                    statusText += "ACTIVE (UNTRACKED)";
+                    color = EditorColors.Caution;
+                }
+                else
+                {
+                    statusText += "CLOSED";
+                }
+
+                statusText += $" | INDEX: {(index >= 0 ? index.ToString() : "N/A")}";
+
+                if (view.RootView)
+                    statusText += " | ROOT";
+                if (view.ExclusiveView)
+                    statusText += " | EXCLUSIVE";
+                if (view.HideOtherViews)
+                    statusText += " | HIDES OTHERS";
+
+                TerminalGUI.DrawStatusBox(statusText, color);
+            }
+
+            DrawDefaultInspectorFields();
 
             serializedObject.ApplyModifiedProperties();
 
-            if (!Application.isPlaying)
-                return;
-
-            if (SentinalManager.Instance == null)
-            {
-                EditorGUILayout.Space(4);
-                EditorGUILayout.HelpBox(
-                    "Sentinal is not initialized. Ensure it is present in the scene.",
-                    MessageType.Warning
-                );
-                return;
-            }
-
-            int index = SentinalManager.Instance.GetViewIndex(sentinalView);
-            string indexString = index >= 0 ? index.ToString() : "Not in history";
-            bool isCurrentView = SentinalManager.Instance.CurrentView == sentinalView;
-            bool isMostRecentView = SentinalManager.Instance.MostRecentView == sentinalView;
-            bool isActiveButNotTracked = sentinalView.IsActive && !sentinalView.TrackView;
-
-            EditorGUILayout.Space(4);
-
-            DrawInfoBox(() =>
-            {
-                var statusStyle = new GUIStyle(EditorStyles.miniLabel);
-                if (isCurrentView)
-                {
-                    statusStyle.normal.textColor = SentinalEditorColors.AccentColor;
-                }
-                else if (isActiveButNotTracked)
-                {
-                    statusStyle.normal.textColor = SentinalEditorColors.WarningColor;
-                }
-                EditorGUILayout.LabelField(
-                    $"Index: {indexString}  |  Current: {(isCurrentView ? "Yes" : "No")}  |  Recent: {(isMostRecentView ? "Yes" : "No")}",
-                    statusStyle
-                );
-            });
-
             if (Application.isPlaying)
+            {
                 Repaint();
+            }
         }
 
-        private void DrawInfoBox(System.Action content)
+        private void DrawDefaultInspectorFields()
         {
-            var originalColor = GUI.backgroundColor;
-            GUI.backgroundColor = SentinalEditorColors.BoxColor;
+            var iterator = serializedObject.GetIterator();
+            bool enterChildren = true;
 
-            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
-            GUI.backgroundColor = originalColor;
+            while (iterator.NextVisible(enterChildren))
+            {
+                enterChildren = false;
+                if (iterator.name == "m_Script")
+                    continue;
 
-            content?.Invoke();
-
-            EditorGUILayout.EndVertical();
+                EditorGUILayout.PropertyField(iterator, true);
+            }
         }
+
+#if ENABLE_INPUT_SYSTEM
+        [MenuItem("CONTEXT/ViewSelector/Add Action Map Gate")]
+        private static void AddActionMapGate(MenuCommand command)
+        {
+            var view = command.context as ViewSelector;
+            Undo.AddComponent<InputSystem.ActionMapGate>(view.gameObject);
+        }
+
+        [MenuItem("CONTEXT/ViewSelector/Add Action Map Gate", true)]
+        private static bool ValidateAddActionMapGate(MenuCommand command)
+        {
+            var view = command.context as ViewSelector;
+            return view != null && !view.TryGetComponent(out InputSystem.ActionMapGate _);
+        }
+
+        [MenuItem("CONTEXT/ViewSelector/Add View Input System Handler")]
+        private static void AddInputSystemHandler(MenuCommand command)
+        {
+            var view = command.context as ViewSelector;
+            Undo.AddComponent<InputSystem.ViewInputSystemHandler>(view.gameObject);
+        }
+
+        [MenuItem("CONTEXT/ViewSelector/Add View Input System Handler", true)]
+        private static bool ValidateAddInputSystemHandler(MenuCommand command)
+        {
+            var view = command.context as ViewSelector;
+            return view != null && !view.TryGetComponent(out InputSystem.ViewInputSystemHandler _);
+        }
+
+        [MenuItem("CONTEXT/ViewSelector/Add Dismissal Input Handler")]
+        private static void AddDismissalHandler(MenuCommand command)
+        {
+            var view = command.context as ViewSelector;
+            Undo.AddComponent<InputSystem.ViewDismissalInputHandler>(view.gameObject);
+        }
+
+        [MenuItem("CONTEXT/ViewSelector/Add Dismissal Input Handler", true)]
+        private static bool ValidateAddDismissalHandler(MenuCommand command)
+        {
+            var view = command.context as ViewSelector;
+            return view != null && !view.TryGetComponent(out InputSystem.ViewDismissalInputHandler _);
+        }
+#endif
     }
 }

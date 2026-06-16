@@ -1,182 +1,220 @@
 #if ENABLE_INPUT_SYSTEM
 using System;
-using System.Linq;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
 namespace Sentinal.InputSystem
 {
+    public enum PlayerInputSource
+    {
+        [Tooltip("Resolve the player through SentinalPlayer role keys.")]
+        SentinalPlayerRole,
+
+        [Tooltip("Use a direct PlayerInput reference.")]
+        DirectReference,
+
+        [Tooltip("Use a PlayerInput from PlayerInput.all by index.")]
+        PlayerInputIndex
+    }
+
+    public enum HandlerInputMode
+    {
+        [Tooltip("Input is enabled only when the associated View is the global current view in the ViewRouter.")]
+        GlobalFocus,
+
+        [Tooltip(
+            "Input is enabled whenever this View's GameObject is active in the hierarchy, even if it's untracked or not globally focused. Useful for sub-views or tabs."
+        )]
+        LocalActive,
+
+        [Tooltip("Input is always enabled as long as this component is enabled.")]
+        Always
+    }
+
     [AddComponentMenu("Sentinal/View Input System Handler"), DisallowMultipleComponent]
     public class ViewInputSystemHandler : ViewInputToggleBase, IPlayerInputHandler
     {
-        /// <summary>
-        /// Event fired when input state changes (enabled/disabled).
-        /// </summary>
         public override event Action<bool> OnInputChanged;
-
-        /// <summary>
-        /// Event fired when PlayerInput reference changes.
-        /// </summary>
         public event Action<PlayerInput> OnPlayerInputChanged;
 
         [Header("View Input")]
         [SerializeField]
-        [Tooltip("Whether input is only enabled when the associated ViewSelector is the current view.")]
-        private bool inputOnlyWhenCurrent = true;
+        [Tooltip("How this handler decides when to enable input.")]
+        private HandlerInputMode inputMode = HandlerInputMode.GlobalFocus;
 
         [SerializeField]
-        [Tooltip("The ViewSelector to track for input toggling. Only used when inputOnlyWhenCurrent is true.")]
+        [Tooltip("The ViewSelector to track for input toggling. Only used when mode is GlobalFocus or LocalActive.")]
         private ViewSelector viewSelector;
 
-        [Header("Direct Input")]
+        [Header("Input Source")]
         [SerializeField]
-        [Tooltip("The PlayerInput to use. If null and applyToAllPlayers is false, will attempt to find one by index.")]
+        [Tooltip("Where to source PlayerInput from.")]
+        private PlayerInputSource inputSource = PlayerInputSource.SentinalPlayerRole;
+
+        [SerializeField]
+        [Tooltip("Player key for SentinalPlayer lookup. 0 = Primary.")]
+        private int playerKey = SentinalPlayer.PrimaryKey;
+
+        [SerializeField]
+        [Tooltip("Direct PlayerInput reference used when source is DirectReference.")]
+        private PlayerInput directPlayerInput;
+
+        [SerializeField]
+        [Tooltip("Index into PlayerInput.all used when source is PlayerInputIndex.")]
+        private int playerInputIndex;
+
         private PlayerInput playerInput;
-
-        [SerializeField]
-        [Tooltip("Player index to get PlayerInput from if playerInput is null.")]
-        private int playerIndex = 0;
-
-        [Header("Action Maps")]
-        [SerializeField]
-        [Tooltip(
-            "If true, applies action map changes to all PlayerInputs. If false, uses the playerInput field for action map changes."
-        )]
-        private bool applyToAllPlayers;
-
-        [SerializeField]
-        [Tooltip("Action maps to configure when this handler is enabled.")]
-        private ActionMapConfig[] onEnabledActionMaps = new[] { new ActionMapConfig("UI", true) };
-
-        [SerializeField]
-        [Tooltip("Action maps to configure when this handler is disabled.")]
-        private ActionMapConfig[] onDisabledActionMaps = Array.Empty<ActionMapConfig>();
-
         private bool inputEnabled = true;
 
-        /// <summary>
-        /// Gets or sets whether input is only enabled when the ViewSelector is current.
-        /// </summary>
-        public bool InputOnlyWhenCurrent
+        public HandlerInputMode InputMode
         {
-            get => inputOnlyWhenCurrent;
-            set => inputOnlyWhenCurrent = value;
+            get => inputMode;
+            set
+            {
+                if (inputMode != value)
+                {
+                    inputMode = value;
+                    EvaluateInputState();
+                }
+            }
         }
 
-        /// <summary>
-        /// Gets the associated ViewSelector, if any.
-        /// </summary>
         public ViewSelector ViewSelector => viewSelector;
 
         private void Awake()
         {
-            if (playerInput == null)
-            {
-                playerInput = PlayerInput.GetPlayerByIndex(playerIndex);
-                if (playerInput == null)
-                    playerInput = PlayerInput.all.FirstOrDefault();
-            }
+            ResolvePlayerInput();
 
-            if (inputOnlyWhenCurrent && viewSelector == null)
+            if (inputMode != HandlerInputMode.Always && viewSelector == null)
                 viewSelector = GetComponent<ViewSelector>();
         }
 
         private void OnEnable()
         {
-            if (inputOnlyWhenCurrent && viewSelector != null)
-            {
-                SentinalManager.OnSwitch += OnViewSwitch;
+            PlayerInput previousPlayerInput = playerInput;
+            ResolvePlayerInput();
 
-                if (SentinalManager.Instance != null && SentinalManager.Instance.IsCurrent(viewSelector))
-                {
-                    EnableInput();
-                }
-                else
-                {
-                    DisableInput();
-                }
-            }
-            else if (!inputOnlyWhenCurrent)
-            {
-                EnableInput();
-            }
+            if (inputSource == PlayerInputSource.SentinalPlayerRole)
+                SentinalPlayer.OnPlayerChanged += OnPlayerRoleChanged;
+
+            if (previousPlayerInput != playerInput)
+                OnPlayerInputChanged?.Invoke(playerInput);
+
+            SentinalViewRouter.OnSwitch += OnViewSwitch;
+
+            EvaluateInputState();
         }
 
         private void OnDisable()
         {
-            if (inputOnlyWhenCurrent)
-                SentinalManager.OnSwitch -= OnViewSwitch;
+            if (inputSource == PlayerInputSource.SentinalPlayerRole)
+                SentinalPlayer.OnPlayerChanged -= OnPlayerRoleChanged;
+
+            SentinalViewRouter.OnSwitch -= OnViewSwitch;
+
+            if (inputMode == HandlerInputMode.LocalActive)
+                DisableInput();
+        }
+
+        private void OnPlayerRoleChanged(int key, PlayerInput newPlayer)
+        {
+            if (key != playerKey)
+                return;
+
+            if (playerInput != newPlayer)
+            {
+                playerInput = newPlayer;
+                OnPlayerInputChanged?.Invoke(playerInput);
+            }
+        }
+
+        private void ResolvePlayerInput()
+        {
+            playerInput = inputSource switch
+            {
+                PlayerInputSource.SentinalPlayerRole => SentinalPlayer.GetPlayer(playerKey),
+                PlayerInputSource.PlayerInputIndex => SentinalPlayer.GetPlayerByIndex(playerInputIndex),
+                _ => directPlayerInput,
+            };
         }
 
         private void OnViewSwitch(ViewSelector previousView, ViewSelector newView)
         {
-            if (!inputOnlyWhenCurrent || viewSelector == null)
-                return;
-
-            if (newView == viewSelector)
-                EnableInput();
-            else if (previousView == viewSelector)
-                DisableInput();
+            if (inputMode == HandlerInputMode.GlobalFocus)
+                EvaluateInputState();
         }
 
-        /// <summary>
-        /// Sets the ViewSelector reference. Only effective when inputOnlyWhenCurrent is true.
-        /// </summary>
+        public void EvaluateInputState()
+        {
+            if (!isActiveAndEnabled)
+            {
+                DisableInput();
+                return;
+            }
+
+            switch (inputMode)
+            {
+                case HandlerInputMode.GlobalFocus:
+                    if (viewSelector != null && SentinalViewRouter.IsCurrent(viewSelector))
+                        EnableInput();
+                    else
+                        DisableInput();
+                    break;
+                case HandlerInputMode.LocalActive:
+                    if (viewSelector != null && viewSelector.IsActive)
+                        EnableInput();
+                    else
+                        DisableInput();
+                    break;
+                case HandlerInputMode.Always:
+                    EnableInput();
+                    break;
+            }
+        }
+
         public void SetViewSelector(ViewSelector selector)
         {
             if (viewSelector == selector)
                 return;
 
-            if (inputOnlyWhenCurrent && isActiveAndEnabled)
-                SentinalManager.OnSwitch -= OnViewSwitch;
-
             viewSelector = selector;
-
-            if (inputOnlyWhenCurrent && isActiveAndEnabled && viewSelector != null)
-            {
-                SentinalManager.OnSwitch += OnViewSwitch;
-
-                if (SentinalManager.Instance != null && SentinalManager.Instance.IsCurrent(viewSelector))
-                    EnableInput();
-                else
-                    DisableInput();
-            }
+            EvaluateInputState();
         }
 
         public PlayerInput GetPlayerInput() => playerInput;
 
-        public bool AppliesToAllPlayers() => applyToAllPlayers;
+        public string GetTrackingPlayerInputName() => playerInput != null ? playerInput.name : "None";
 
-        public int GetPlayerIndex() => playerIndex;
+        public int GetPlayerKey() => playerKey;
 
-        public ActionMapConfig[] GetOnEnabledActionMaps() => onEnabledActionMaps;
+        public PlayerInputSource GetInputSource() => inputSource;
 
-        public ActionMapConfig[] GetOnDisabledActionMaps() => onDisabledActionMaps;
-
-        /// <summary>
-        /// Checks if this handler has any action maps configured.
-        /// </summary>
-        public bool HasActionMapsConfigured() =>
-            (onEnabledActionMaps != null && onEnabledActionMaps.Length > 0)
-            || (onDisabledActionMaps != null && onDisabledActionMaps.Length > 0);
+        public int GetPlayerInputIndex() => playerInputIndex;
 
         public override void EnableInput()
         {
-            inputEnabled = true;
-            OnInputChanged?.Invoke(true);
+            if (!inputEnabled)
+            {
+                inputEnabled = true;
+                OnInputChanged?.Invoke(true);
+            }
         }
 
         public override void DisableInput()
         {
-            inputEnabled = false;
-            OnInputChanged?.Invoke(false);
+            if (inputEnabled)
+            {
+                inputEnabled = false;
+                OnInputChanged?.Invoke(false);
+            }
         }
 
-        /// <summary>
-        /// Sets the PlayerInput reference. Useful for programmatic setup.
-        /// </summary>
         public void SetPlayerInput(PlayerInput input)
         {
+            directPlayerInput = input;
+            if (inputSource == PlayerInputSource.DirectReference)
+                ResolvePlayerInput();
+
             if (playerInput != input)
             {
                 playerInput = input;
@@ -194,7 +232,8 @@ namespace Sentinal.InputSystem
 
         private void OnDestroy()
         {
-            SentinalManager.OnSwitch -= OnViewSwitch;
+            SentinalPlayer.OnPlayerChanged -= OnPlayerRoleChanged;
+            SentinalViewRouter.OnSwitch -= OnViewSwitch;
             OnInputChanged = null;
             OnPlayerInputChanged = null;
         }

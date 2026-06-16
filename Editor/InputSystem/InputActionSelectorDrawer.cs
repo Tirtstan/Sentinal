@@ -8,85 +8,58 @@ namespace Sentinal.Editor
     [CustomPropertyDrawer(typeof(InputActionSelector))]
     public class InputActionSelectorDrawer : PropertyDrawer
     {
-        private const float ButtonWidth = 20f;
-        private const float ButtonSpacing = 2f;
-        private const float ButtonPadding = 4f;
-
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
+            var useActionNameProp = property.FindPropertyRelative("useActionName");
+            var actionNameProp = property.FindPropertyRelative("actionName");
+            var actionReferenceProp = property.FindPropertyRelative("actionReference");
+
             EditorGUI.BeginProperty(position, label, property);
 
-            SerializedProperty useActionNameProp = property.FindPropertyRelative("useActionName");
-            SerializedProperty actionNameProp = property.FindPropertyRelative("actionName");
-            SerializedProperty actionReferenceProp = property.FindPropertyRelative("actionReference");
+            Rect contentRect = EditorGUI.PrefixLabel(position, label);
+            const float buttonWidth = 20f;
+            const float gap = 2f;
+            float toggleWidth = (buttonWidth * 2f) + gap;
 
-            float buttonsWidth = (ButtonWidth * 2) + ButtonSpacing;
-
-            Rect fieldPosition = position;
-            fieldPosition.width -= buttonsWidth + ButtonPadding;
-
-            var nameButtonRect = new Rect(
-                position.xMax - buttonsWidth,
-                position.y,
-                ButtonWidth,
-                EditorGUIUtility.singleLineHeight
-            );
-            var refButtonRect = new Rect(
-                position.xMax - ButtonWidth,
-                position.y,
-                ButtonWidth,
-                EditorGUIUtility.singleLineHeight
-            );
+            Rect fieldRect = new Rect(contentRect.x, contentRect.y, contentRect.width - toggleWidth - 4f, contentRect.height);
+            Rect nameBtnRect = new Rect(fieldRect.xMax + 4f, contentRect.y, buttonWidth, contentRect.height);
+            Rect refBtnRect = new Rect(nameBtnRect.xMax + gap, contentRect.y, buttonWidth, contentRect.height);
 
             bool useName = useActionNameProp.boolValue;
+            SerializedProperty activeField = useName ? actionNameProp : actionReferenceProp;
+            EditorGUI.PropertyField(fieldRect, activeField, GUIContent.none, true);
 
-            var nameContent = new GUIContent(
-                "N",
-                "Name: Use action name to find actions across specific/all action maps (e.g., 'Submit', 'Cancel', 'UI/Cancel')."
+            bool namePressed = GUI.Toggle(
+                nameBtnRect,
+                useName,
+                new GUIContent("N", "Name: Use action name"),
+                EditorStyles.miniButtonLeft
             );
-            var refContent = new GUIContent(
-                "R",
-                "Reference: Use direct reference to a specific action in a specific action map."
+            if (namePressed != useName && namePressed)
+            {
+                useActionNameProp.boolValue = true;
+            }
+
+            bool referencePressed = GUI.Toggle(
+                refBtnRect,
+                !useName,
+                new GUIContent("R", "Reference: Use direct reference"),
+                EditorStyles.miniButtonRight
             );
-
-            if (GUI.Button(nameButtonRect, nameContent, EditorStyles.miniButtonLeft))
+            if (referencePressed == useName && referencePressed)
             {
-                if (!useName)
-                    useActionNameProp.boolValue = true;
+                useActionNameProp.boolValue = false;
             }
-
-            if (GUI.Button(refButtonRect, refContent, EditorStyles.miniButtonRight))
-            {
-                if (useName)
-                    useActionNameProp.boolValue = false;
-            }
-
-            if (useName)
-            {
-                EditorGUI.DrawRect(nameButtonRect, new Color(0.3f, 0.5f, 0.9f, 0.15f));
-            }
-            else
-            {
-                EditorGUI.DrawRect(refButtonRect, new Color(0.3f, 0.5f, 0.9f, 0.15f));
-            }
-
-            SerializedProperty fieldToShow = useActionNameProp.boolValue ? actionNameProp : actionReferenceProp;
-            EditorGUI.PropertyField(fieldPosition, fieldToShow, label, true);
-
             EditorGUI.EndProperty();
         }
 
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
         {
-            SerializedProperty useActionNameProp = property.FindPropertyRelative("useActionName");
-            SerializedProperty actionNameProp = property.FindPropertyRelative("actionName");
-            SerializedProperty actionReferenceProp = property.FindPropertyRelative("actionReference");
-
-            return EditorGUI.GetPropertyHeight(
-                useActionNameProp.boolValue ? actionNameProp : actionReferenceProp,
-                label,
-                true
-            );
+            var useActionNameProp = property.FindPropertyRelative("useActionName");
+            var actionNameProp = property.FindPropertyRelative("actionName");
+            var actionReferenceProp = property.FindPropertyRelative("actionReference");
+            SerializedProperty activeField = useActionNameProp.boolValue ? actionNameProp : actionReferenceProp;
+            return EditorGUI.GetPropertyHeight(activeField, true);
         }
     }
 }

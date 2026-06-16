@@ -35,11 +35,25 @@ namespace Sentinal
 
         /// <summary>
         /// Loads the shared ViewGroupConfig from Resources.
-        /// Returns null if no asset exists.
+        /// Searches all resources if not found at the default path.
         /// </summary>
         public static ViewGroupConfig LoadShared()
         {
-            return Resources.Load<ViewGroupConfig>(DefaultResourcePath);
+            var config = Resources.Load<ViewGroupConfig>(DefaultResourcePath);
+            if (config != null) return config;
+
+            var fallback = Resources.LoadAll<ViewGroupConfig>("");
+            if (fallback.Length > 0)
+            {
+                Debug.LogWarning(
+                    $"[Sentinal] ViewGroupConfig not found at '{DefaultResourcePath}'. " +
+                    $"Using fallback at '{fallback[0].name}'. Move it to Resources/{DefaultResourcePath}.asset.",
+                    fallback[0]
+                );
+                return fallback[0];
+            }
+
+            return null;
         }
 
 #if UNITY_EDITOR
@@ -73,6 +87,24 @@ namespace Sentinal
         private static void EnsureSharedAssetOnLoad()
         {
             EnsureSharedInProject();
+        }
+
+        private void OnValidate()
+        {
+            for (int i = Groups.Count - 1; i >= 0; i--)
+            {
+                if (string.IsNullOrWhiteSpace(Groups[i]))
+                {
+                    Groups[i] = $"Group {i}";
+                    Debug.LogWarning($"[Sentinal] Empty group name at index {i}, replaced with '{Groups[i]}'.", this);
+                }
+            }
+
+            var path = AssetDatabase.GetAssetPath(this);
+            if (!string.IsNullOrEmpty(path) && !path.Contains("/Resources/"))
+            {
+                Debug.LogWarning("[Sentinal] ViewGroupConfig must be inside a Resources folder to be loaded at runtime.", this);
+            }
         }
 #endif
     }

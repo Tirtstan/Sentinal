@@ -56,11 +56,6 @@ namespace Sentinal
         public bool PreventSelection { get; }
 
         /// <summary>
-        /// Whether to automatically select the first selected GameObject on enable.
-        /// </summary>
-        public bool AutoSelectOnEnable { get; }
-
-        /// <summary>
         /// Whether to remember the last selected GameObject.
         /// </summary>
         public bool RememberLastSelected { get; }

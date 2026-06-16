@@ -5,40 +5,34 @@ using Sentinal.InputSystem;
 
 namespace Sentinal.Editor
 {
-    [CustomEditor(typeof(ViewInputSystemHandler))]
-    public class ViewInputSystemHandlerEditor : UnityEditor.Editor
+    [CustomEditor(typeof(ViewDismissalInputHandler))]
+    public class ViewDismissalInputHandlerEditor : UnityEditor.Editor
     {
         public override void OnInspectorGUI()
         {
             serializedObject.Update();
 
-            var handler = target as ViewInputSystemHandler;
+            var handler = target as ViewDismissalInputHandler;
 
             if (Application.isPlaying)
             {
-                bool enabled = handler.IsInputEnabled();
-                string statusText = enabled ? "INPUT ENABLED" : "INPUT DISABLED";
-                Color color = enabled ? EditorColors.Signal : EditorColors.Info;
-
-                var playerInput = handler.GetPlayerInput();
-                if (playerInput != null)
+                if (handler.GetPlayerInput() != null)
                 {
-                    statusText +=
-                        $" | PlayerIndex: {playerInput.playerIndex} | Name: {handler.GetTrackingPlayerInputName()} | Map: {playerInput.currentActionMap?.name ?? "NONE"}";
+                    TerminalGUI.DrawStatusBox(
+                        $"CONNECTED | Name: {handler.GetTrackingPlayerInputName()}",
+                        EditorColors.Connected
+                    );
                 }
                 else
                 {
-                    statusText +=
+                    string waitText =
                         handler.GetInputSource() == PlayerInputSource.SentinalPlayerRole
-                            ? $" | WAITING FOR ROLE: {handler.GetPlayerKey()}"
+                            ? $"WAITING | NO PLAYER FOR ROLE {handler.GetPlayerKey()}"
                             : handler.GetInputSource() == PlayerInputSource.PlayerInputIndex
-                                ? $" | WAITING FOR INDEX: {handler.GetPlayerInputIndex()}"
-                                : " | WAITING FOR DIRECT PLAYER";
-                    if (enabled)
-                        color = EditorColors.Caution;
+                                ? $"WAITING | NO PLAYER AT INDEX {handler.GetPlayerInputIndex()}"
+                                : "WAITING | NO DIRECT PLAYER";
+                    TerminalGUI.DrawStatusBox(waitText, EditorColors.Caution);
                 }
-
-                TerminalGUI.DrawStatusBox(statusText, color);
             }
 
             SerializedProperty inputSourceProp = serializedObject.FindProperty("inputSource");

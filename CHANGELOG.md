@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.0] - 2026-06-16
+
+### Changed
+
+- **Core architecture**:
+    - Replaced the scene-bound `SentinalManager` singleton with static `SentinalViewRouter`.
+    - Routing lifecycle now relies directly on `ViewSelector` enable/disable registration flow, removing the mandatory manager scene object.
+    - Sentinal now fully supports **Fast Play Mode**.
+- **Documentation**:
+    - Fully refreshed `README.md` for 4.0.0.
+
+### Added
+
+- **Address-based view routing**:
+    - Added `ViewAddress` ScriptableObject key for decoupled view targeting.
+    - Added `ViewAddressRegistry` for runtime register/resolve behavior.
+    - Added `SentinalViewRouter.OpenView(ViewAddress)` to resolve existing scene views or instantiate fallback prefabs.
+- **Player role mapping utility**:
+    - Added `SentinalPlayer` static API to map role keys to `PlayerInput` instances (`SetPlayer`, `GetPlayer`, `TryGetPlayer`, `SetPrimaryPlayer`).
+
+### Breaking
+
+- `SentinalManager` public API and event subscriptions must be migrated to `SentinalViewRouter`.
+- Existing project setup that depended on a manager GameObject should be updated to the router-based workflow.
+
+### Migration Notes
+
+If upgrading from 3.x:
+
+- Replace `SentinalManager.Instance` usages with `SentinalViewRouter`.
+- Remove scene dependencies that only existed to host `SentinalManager`.
+- Update custom scripts/events to subscribe to `SentinalViewRouter` static events.
+- If needed, adopt `ViewAddress` for decoupled open calls.
+- Replace old action map manager/overlay setup with per-view `ActionMapGate`.
+- Use `SentinalViewRouter.Refresh()` to refresh all views to reapply action maps and input handlers (e.g. `PlayerInput` created during runtime).
+
 ## [3.2.4] - 2026-02-27
 
 ### Fixed
@@ -61,7 +97,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **ActionMapManager**:
     - Removed all action map history tracking. _Was just causing so many conflicting issues, rather use `ViewSelector`'s `onEnabledActionMaps` and `onDisabledActionMaps` to configure action maps._
-
 - **ViewInputSystemHandler**:
     - When one action map is counted, it is treated as exclusive and toggles the affected `PlayerInput`s' action map(s). e.g If action map "UI" is the only enabled action map, every other action map will be disabled on `PlayerInput`(s).
 
