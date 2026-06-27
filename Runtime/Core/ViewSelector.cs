@@ -1,16 +1,19 @@
+using System.Collections;
+using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
-using UnityEngine.Serialization;
+using UnityEngine.UI;
 
 namespace Sentinal
 {
     [AddComponentMenu("Sentinal/View Selector"), DisallowMultipleComponent]
     public class ViewSelector : MonoBehaviour, IViewSelector
     {
-        [Header("Components")]
+        [Header("Identity")]
         [SerializeField]
-        [Tooltip("The first selected GameObject when selecting.")]
-        private GameObject firstSelected;
+        [CreateAssetButton("Assets/Resources/Sentinal View Addresses", "Address")]
+        [Tooltip("Optional SO address for cross-prefab discovery via ViewAddressRegistry.")]
+        private ViewAddress address;
 
         [Header("View")]
         [SerializeField]
@@ -23,18 +26,16 @@ namespace Sentinal
 
         [SerializeField]
         [Tooltip(
-            "Root view: does not get auto-closed and has special permissions around being closed (e.g. by dismissal input). Can still be hidden. Use for main screens like main menu or HUD."
+            "Root view: does not get auto-closed and has special permissions around being closed (e.g. by dismissal input). Can still be hidden. Use for main screens like main menu or HUD (overlay)."
         )]
-        [FormerlySerializedAs("preventDismissal")]
         private bool rootView;
 
         [Header("Grouping")]
         [SerializeField]
-        [ViewGroupMask]
         [Tooltip(
             "Selected groups for this view. Exclusive and hide behaviors will only affect views in the same group(s)."
         )]
-        private int groupMask;
+        private ViewGroupMask groupMask = 1;
 
         [SerializeField]
         [Tooltip(
@@ -50,78 +51,129 @@ namespace Sentinal
 
         [Header("Selection")]
         [SerializeField]
+        [Tooltip("The first selected GameObject when selecting.")]
+        private GameObject firstSelected;
+
+        [SerializeField]
         [Tooltip(
             "Whether to prevent selection of this view. This is useful for views that interact through only input actions."
         )]
         private bool preventSelection;
 
         [SerializeField]
-        [Tooltip("Whether to automatically select the first selected GameObject on enable.")]
-        private bool autoSelectOnEnable = true;
-
-        [SerializeField]
         [Tooltip("Whether to remember the last selected GameObject.")]
         private bool rememberLastSelected = true;
 
-        public GameObject FirstSelected => firstSelected;
+        [SerializeField]
+        [Tooltip(
+            "Automatically selects this view when it becomes active/enabled. Useful for non-tracked/tabbed views."
+        )]
+        private bool selectOnEnable = true;
+
+        public GameObject FirstSelected
+        {
+            get => firstSelected;
+            set => firstSelected = value;
+        }
         public GameObject LastSelected => lastSelected;
-        public int Priority => priority;
-        public bool RootView => rootView;
-        public int GroupMask => groupMask;
-        public bool ExclusiveView => exclusiveView;
-        public bool HideOtherViews => hideOtherViews;
-        public bool TrackView => trackView;
-        public bool PreventSelection => preventSelection;
-        public bool AutoSelectOnEnable => autoSelectOnEnable;
-        public bool RememberLastSelected => rememberLastSelected;
+        public ViewAddress Address
+        {
+            get => address;
+            set => address = value;
+        }
+        public int Priority
+        {
+            get => priority;
+            set => priority = value;
+        }
+        public bool RootView
+        {
+            get => rootView;
+            set => rootView = value;
+        }
+        public ViewGroupMask GroupMask
+        {
+            get => groupMask;
+            set => groupMask = value;
+        }
+        public bool ExclusiveView
+        {
+            get => exclusiveView;
+            set => exclusiveView = value;
+        }
+        public bool HideOtherViews
+        {
+            get => hideOtherViews;
+            set => hideOtherViews = value;
+        }
+        public bool TrackView
+        {
+            get => trackView;
+            set => trackView = value;
+        }
+        public bool PreventSelection
+        {
+            get => preventSelection;
+            set => preventSelection = value;
+        }
+        public bool RememberLastSelected
+        {
+            get => rememberLastSelected;
+            set => rememberLastSelected = value;
+        }
+        public bool SelectOnEnable
+        {
+            get => selectOnEnable;
+            set => selectOnEnable = value;
+        }
         public bool IsActive => gameObject.activeInHierarchy;
 
         private GameObject lastSelected;
         private bool isQuitting;
         private bool isBeingHidden;
+        private Coroutine selectOnEnableCoroutine;
 
         private void Awake()
         {
-            Application.quitting += OnQuit;
-            SentinalManager.OnSwitch += OnSwitch;
+            SentinalViewRouter.OnSwitch += OnSwitch;
         }
 
         private void OnEnable()
         {
+            if (address != null)
+                ViewAddressRegistry.Register(address, this);
+
             if (exclusiveView)
-                SentinalManager.Instance.CloseAllViews(GroupMask);
+                SentinalViewRouter.CloseAllViews(GroupMask);
             else if (hideOtherViews)
-                SentinalManager.Instance.HideAllViews(GroupMask, this);
+                SentinalViewRouter.HideAllViews(GroupMask, this);
 
             if (trackView)
-                SentinalManager.Instance.Add(this);
+                SentinalViewRouter.Add(this);
 
-            if (autoSelectOnEnable)
-                Select();
+            if (selectOnEnable)
+                QueueSelectOnEnable();
         }
 
         public void Open() => gameObject.SetActive(true);
 
         public void Close() => gameObject.SetActive(false);
 
-        private void OnSwitch(ViewSelector selector1, ViewSelector selector2)
+        private void OnSwitch(ViewSelector previousView, ViewSelector newView)
         {
-            if (selector1 == this && rememberLastSelected)
+            if (previousView == this && rememberLastSelected)
                 SaveLastSelection();
-        }
 
-        private void OnQuit() => isQuitting = true;
+            if (newView == this)
+                Select();
+        }
 
         public void Select()
         {
             if (rememberLastSelected && lastSelected != null && lastSelected.activeInHierarchy)
-            {
                 SelectLastSelected();
-            }
             else
-            {
                 SelectFirstSelected();
-            }
         }
 
         public void SetFirstSelected(GameObject firstSelected) => this.firstSelected = firstSelected;
@@ -150,6 +202,9 @@ namespace Sentinal
             if (selected == null || !selected.activeInHierarchy)
                 return;
 
+            if (EventSystem.current.currentSelectedGameObject == selected)
+                return;
+
             EventSystem.current.SetSelectedGameObject(selected);
         }
 
@@ -168,33 +223,39 @@ namespace Sentinal
             if (isQuitting || isBeingHidden)
                 return;
 
+            if (selectOnEnableCoroutine != null)
+            {
+                StopCoroutine(selectOnEnableCoroutine);
+                selectOnEnableCoroutine = null;
+            }
+
             if (rememberLastSelected)
                 SaveLastSelection();
 
             if (trackView)
-                SentinalManager.Instance.Remove(this);
+                SentinalViewRouter.Remove(this);
 
             if (hideOtherViews)
-                SentinalManager.Instance.RestoreHiddenViews(this);
+                SentinalViewRouter.RestoreHiddenViews(this);
+
+            if (address != null)
+                ViewAddressRegistry.Unregister(address);
         }
 
         /// <summary>
         /// Sets whether this view is being hidden temporarily.
         /// When true, prevents removal from view history on disable.
         /// </summary>
-        /// <param name="hidden">Whether the view is being hidden.</param>
         public void SetBeingHidden(bool hidden) => isBeingHidden = hidden;
 
         /// <summary>
         /// Checks if this view is currently focused.
         /// </summary>
-        public bool IsCurrent() => SentinalManager.Instance != null && SentinalManager.Instance.IsCurrent(this);
+        public bool IsCurrent() => SentinalViewRouter.IsCurrent(this);
 
         /// <summary>
         /// Checks if this view shares at least one group with another view.
         /// </summary>
-        /// <param name="other">The other view to check.</param>
-        /// <returns>True if both views share at least one group.</returns>
         public bool SharesGroupWith(ViewSelector other)
         {
             if (other == null)
@@ -209,8 +270,6 @@ namespace Sentinal
         /// <summary>
         /// Checks if the selectable GameObject is part of this selector's hierarchy.
         /// </summary>
-        /// <param name="selectable">The GameObject to check.</param>
-        /// <returns>True if the selectable is part of this selector's hierarchy, false otherwise.</returns>
         private bool IsSelectablePartOfThis(GameObject selectable)
         {
             if (selectable == null)
@@ -233,10 +292,50 @@ namespace Sentinal
             groupMask = 1;
         }
 
+        private void OnApplicationQuit()
+        {
+            isQuitting = true;
+        }
+
         private void OnDestroy()
         {
-            Application.quitting -= OnQuit;
-            SentinalManager.OnSwitch -= OnSwitch;
+            if (selectOnEnableCoroutine != null)
+            {
+                StopCoroutine(selectOnEnableCoroutine);
+                selectOnEnableCoroutine = null;
+            }
+
+            // If the object is destroyed while hidden (or during scene unload),
+            // OnDisable may have skipped cleanup. Ensure statics don't retain stale refs.
+            if (trackView)
+                SentinalViewRouter.Remove(this);
+
+            if (address != null)
+                ViewAddressRegistry.Unregister(address);
+
+            SentinalViewRouter.OnSwitch -= OnSwitch;
+        }
+
+        private void QueueSelectOnEnable()
+        {
+            if (!isActiveAndEnabled)
+                return;
+
+            if (selectOnEnableCoroutine != null)
+                StopCoroutine(selectOnEnableCoroutine);
+
+            selectOnEnableCoroutine = StartCoroutine(SelectOnEnableNextFrame());
+        }
+
+        private IEnumerator SelectOnEnableNextFrame()
+        {
+            yield return null;
+
+            selectOnEnableCoroutine = null;
+            if (!isActiveAndEnabled)
+                yield break;
+
+            Select();
         }
     }
 }

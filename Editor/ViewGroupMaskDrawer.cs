@@ -4,18 +4,27 @@ using UnityEngine;
 namespace Sentinal.Editor
 {
     /// <summary>
-    /// Custom property drawer for displaying a group mask selection UI similar to Unity's LayerMask.
+    /// Custom property drawer for displaying a group mask selection UI.
     /// </summary>
-    [CustomPropertyDrawer(typeof(ViewGroupMaskAttribute))]
+    [CustomPropertyDrawer(typeof(ViewGroupMask))]
     public class ViewGroupMaskDrawer : PropertyDrawer
     {
         private ViewGroupConfig config;
 
+        public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
+        {
+            return EditorGUIUtility.singleLineHeight;
+        }
+
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
-            if (property.propertyType != SerializedPropertyType.Integer)
+            label = EditorGUI.BeginProperty(position, label, property);
+
+            SerializedProperty valueProp = property.FindPropertyRelative("value");
+            if (valueProp == null)
             {
-                EditorGUI.LabelField(position, label.text, "Use ViewGroupMaskAttribute with an int field.");
+                EditorGUI.LabelField(position, label.text, "Invalid ViewGroupMask structure.");
+                EditorGUI.EndProperty();
                 return;
             }
 
@@ -23,29 +32,42 @@ namespace Sentinal.Editor
             {
                 config = ViewGroupConfig.LoadShared();
                 if (config == null)
-                    config = ViewGroupConfig.EnsureSharedInProject();
-
-                if (config == null)
                 {
-                    Debug.LogWarning(
-                        "Failing to create/load ViewGroupConfig asset. ViewGroupMask cannot be displayed."
+                    // Draw standard prefix label aligned with all inspector fields
+                    Rect controlRect = EditorGUI.PrefixLabel(position, label);
+
+                    GUIContent btnContent = new GUIContent(
+                        " Config Missing (Click to Create)",
+                        EditorGUIUtility.IconContent("console.warnicon.sml")?.image,
+                        "ViewGroupConfig asset not found in Resources. Click to create SentinalViewGroups asset."
                     );
+
+                    if (GUI.Button(controlRect, btnContent, EditorStyles.miniButton))
+                    {
+                        ViewGroupConfig.EnsureSharedInProject();
+                        config = ViewGroupConfig.LoadShared();
+                        if (config != null)
+                        {
+                            EditorGUIUtility.PingObject(config);
+                        }
+                        GUI.changed = true;
+                    }
+
+                    EditorGUI.EndProperty();
                     return;
                 }
             }
 
-            int groupMask = property.intValue;
-            int groupCount = config.Groups.Count;
+            int groupMask = valueProp.intValue;
+            int groupCount = config.GroupCount;
 
             string[] groupNames = new string[groupCount];
             for (int i = 0; i < groupCount; i++)
                 groupNames[i] = config.GetGroupName(i) ?? $"Group {i}";
 
-            EditorGUI.BeginProperty(position, label, property);
-
             int newMask = EditorGUI.MaskField(position, label, groupMask, groupNames);
             if (newMask != groupMask)
-                property.intValue = newMask;
+                valueProp.intValue = newMask;
 
             EditorGUI.EndProperty();
         }

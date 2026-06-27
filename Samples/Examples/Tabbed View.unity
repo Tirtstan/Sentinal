@@ -393,20 +393,6 @@ MonoBehaviour:
     m_VarianceClampScale: 0.9
     m_ContrastAdaptiveSharpening: 0
   m_Version: 2
---- !u!114 &184837962
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fc1515ab76e54f068e2f2207940fab32, type: 3}
-  m_Name: UI/MiddleClick
-  m_EditorClassIdentifier: Unity.InputSystem::UnityEngine.InputSystem.InputActionReference
-  m_Asset: {fileID: -944628639613478452, guid: 02cc9a2fe59c8df4e9c02141218a987b, type: 3}
-  m_ActionId: dad70c86-b58c-4b17-88ad-f5e53adf419e
 --- !u!114 &359661514
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -473,6 +459,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: tirt.sentinal::Sentinal.ViewSelector
   firstSelected: {fileID: 0}
+  address: {fileID: 0}
   priority: 0
   trackView: 0
   rootView: 0
@@ -480,7 +467,6 @@ MonoBehaviour:
   exclusiveView: 0
   hideOtherViews: 0
   preventSelection: 0
-  autoSelectOnEnable: 1
   rememberLastSelected: 1
 --- !u!114 &401961015
 MonoBehaviour:
@@ -642,20 +628,6 @@ RectTransform:
   m_CorrespondingSourceObject: {fileID: 6756224698454010299, guid: 31bba07ffe71b4086a4db71d23011a33, type: 3}
   m_PrefabInstance: {fileID: 404168214}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &453870280
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fc1515ab76e54f068e2f2207940fab32, type: 3}
-  m_Name: UI/Cancel
-  m_EditorClassIdentifier: Unity.InputSystem::UnityEngine.InputSystem.InputActionReference
-  m_Asset: {fileID: -944628639613478452, guid: 02cc9a2fe59c8df4e9c02141218a987b, type: 3}
-  m_ActionId: 15cef263-9014-4fd5-94d9-4e4a6234a6ef
 --- !u!1 &469125918
 GameObject:
   m_ObjectHideFlags: 0
@@ -742,34 +714,6 @@ MonoBehaviour:
   m_FlexibleWidth: -1
   m_FlexibleHeight: -1
   m_LayoutPriority: 1
---- !u!114 &484919152
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fc1515ab76e54f068e2f2207940fab32, type: 3}
-  m_Name: UI/Click
-  m_EditorClassIdentifier: Unity.InputSystem::UnityEngine.InputSystem.InputActionReference
-  m_Asset: {fileID: -944628639613478452, guid: 02cc9a2fe59c8df4e9c02141218a987b, type: 3}
-  m_ActionId: 3c7022bf-7922-4f7c-a998-c437916075ad
---- !u!114 &703972127
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fc1515ab76e54f068e2f2207940fab32, type: 3}
-  m_Name: UI/ScrollWheel
-  m_EditorClassIdentifier: Unity.InputSystem::UnityEngine.InputSystem.InputActionReference
-  m_Asset: {fileID: -944628639613478452, guid: 02cc9a2fe59c8df4e9c02141218a987b, type: 3}
-  m_ActionId: 0489e84a-4833-4c40-bfae-cea84b696689
 --- !u!1 &715949002
 GameObject:
   m_ObjectHideFlags: 0
@@ -822,6 +766,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: tirt.sentinal::Sentinal.ViewSelector
   firstSelected: {fileID: 0}
+  address: {fileID: 0}
   priority: 0
   trackView: 0
   rootView: 0
@@ -829,7 +774,6 @@ MonoBehaviour:
   exclusiveView: 0
   hideOtherViews: 0
   preventSelection: 0
-  autoSelectOnEnable: 1
   rememberLastSelected: 1
 --- !u!114 &715949005
 MonoBehaviour:
@@ -1495,48 +1439,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9085046f02f69544eb97fd06b6048fe2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Toggle
---- !u!114 &1147370140
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fc1515ab76e54f068e2f2207940fab32, type: 3}
-  m_Name: UI/RightClick
-  m_EditorClassIdentifier: Unity.InputSystem::UnityEngine.InputSystem.InputActionReference
-  m_Asset: {fileID: -944628639613478452, guid: 02cc9a2fe59c8df4e9c02141218a987b, type: 3}
-  m_ActionId: 44b200b1-1557-4083-816c-b22cbdf77ddf
---- !u!114 &1147518127
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fc1515ab76e54f068e2f2207940fab32, type: 3}
-  m_Name: UI/Submit
-  m_EditorClassIdentifier: Unity.InputSystem::UnityEngine.InputSystem.InputActionReference
-  m_Asset: {fileID: -944628639613478452, guid: 02cc9a2fe59c8df4e9c02141218a987b, type: 3}
-  m_ActionId: 7607c7b6-cd76-4816-beef-bd0341cfe950
---- !u!114 &1250540407
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fc1515ab76e54f068e2f2207940fab32, type: 3}
-  m_Name: UI/Point
-  m_EditorClassIdentifier: Unity.InputSystem::UnityEngine.InputSystem.InputActionReference
-  m_Asset: {fileID: -944628639613478452, guid: 02cc9a2fe59c8df4e9c02141218a987b, type: 3}
-  m_ActionId: 32b35790-4ed0-4e9a-aa41-69ac6d629449
 --- !u!1 &1271424292
 GameObject:
   m_ObjectHideFlags: 0
@@ -1685,34 +1587,6 @@ RectTransform:
   m_CorrespondingSourceObject: {fileID: 6756224698454010299, guid: 31bba07ffe71b4086a4db71d23011a33, type: 3}
   m_PrefabInstance: {fileID: 5443616579378089781}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &1401132407
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fc1515ab76e54f068e2f2207940fab32, type: 3}
-  m_Name: UI/TrackedDeviceOrientation
-  m_EditorClassIdentifier: Unity.InputSystem::UnityEngine.InputSystem.InputActionReference
-  m_Asset: {fileID: -944628639613478452, guid: 02cc9a2fe59c8df4e9c02141218a987b, type: 3}
-  m_ActionId: 9caa3d8a-6b2f-4e8e-8bad-6ede561bd9be
---- !u!114 &1444429215
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fc1515ab76e54f068e2f2207940fab32, type: 3}
-  m_Name: UI/TrackedDevicePosition
-  m_EditorClassIdentifier: Unity.InputSystem::UnityEngine.InputSystem.InputActionReference
-  m_Asset: {fileID: -944628639613478452, guid: 02cc9a2fe59c8df4e9c02141218a987b, type: 3}
-  m_ActionId: 24908448-c609-4bc3-a128-ea258674378a
 --- !u!114 &1487113498
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1727,63 +1601,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Unity.InputSystem::UnityEngine.InputSystem.InputActionReference
   m_Asset: {fileID: -944628639613478452, guid: 02cc9a2fe59c8df4e9c02141218a987b, type: 3}
   m_ActionId: a4d2d85a-e6b9-4eca-af2e-1544a45b2a93
---- !u!1001 &1553078547
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 0}
-    m_Modifications:
-    - target: {fileID: 3849116816392765006, guid: bf06b9dca08e43f448779b60a2d6bc74, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 3849116816392765006, guid: bf06b9dca08e43f448779b60a2d6bc74, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 3849116816392765006, guid: bf06b9dca08e43f448779b60a2d6bc74, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 3849116816392765006, guid: bf06b9dca08e43f448779b60a2d6bc74, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 3849116816392765006, guid: bf06b9dca08e43f448779b60a2d6bc74, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 3849116816392765006, guid: bf06b9dca08e43f448779b60a2d6bc74, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 3849116816392765006, guid: bf06b9dca08e43f448779b60a2d6bc74, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 3849116816392765006, guid: bf06b9dca08e43f448779b60a2d6bc74, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 3849116816392765006, guid: bf06b9dca08e43f448779b60a2d6bc74, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 3849116816392765006, guid: bf06b9dca08e43f448779b60a2d6bc74, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 5218824145765998165, guid: bf06b9dca08e43f448779b60a2d6bc74, type: 3}
-      propertyPath: m_Name
-      value: Sentinal
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: bf06b9dca08e43f448779b60a2d6bc74, type: 3}
 --- !u!1 &1630408053
 GameObject:
   m_ObjectHideFlags: 0
@@ -1795,6 +1612,7 @@ GameObject:
   - component: {fileID: 1630408054}
   - component: {fileID: 1630408056}
   - component: {fileID: 1630408060}
+  - component: {fileID: 1630408061}
   - component: {fileID: 1630408059}
   - component: {fileID: 1630408058}
   m_Layer: 5
@@ -1837,6 +1655,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: tirt.sentinal::Sentinal.ViewSelector
   firstSelected: {fileID: 0}
+  address: {fileID: 0}
   priority: 0
   trackView: 1
   rootView: 0
@@ -1844,7 +1663,6 @@ MonoBehaviour:
   exclusiveView: 0
   hideOtherViews: 0
   preventSelection: 0
-  autoSelectOnEnable: 1
   rememberLastSelected: 1
 --- !u!114 &1630408058
 MonoBehaviour:
@@ -1896,15 +1714,28 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1c0637d82875941f3a9d68f4d3e706fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: tirt.sentinal.InputSystem::Sentinal.InputSystem.ViewInputSystemHandler
-  inputOnlyWhenCurrent: 1
+  inputMode: 0
   viewSelector: {fileID: 1630408056}
-  playerInput: {fileID: 1931954873}
-  playerIndex: 0
-  applyToAllPlayers: 0
-  onEnabledActionMaps:
+  playerKey: 0
+--- !u!114 &1630408061
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1630408053}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a0c541779a3e7b14fbae25d5654477d9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: tirt.sentinal.InputSystem::Sentinal.InputSystem.ActionMapGate
+  targetPlayers: 0
+  playerKey: 0
+  mode: 1
+  actionMaps:
   - actionMapName: UI
     enable: 1
-  onDisabledActionMaps: []
+  exclusiveMapName: UI
 --- !u!1 &1692748762
 GameObject:
   m_ObjectHideFlags: 0
@@ -2193,31 +2024,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Unity.InputSystem::UnityEngine.InputSystem.InputActionReference
   m_Asset: {fileID: -944628639613478452, guid: 02cc9a2fe59c8df4e9c02141218a987b, type: 3}
   m_ActionId: a4d2d85a-e6b9-4eca-af2e-1544a45b2a93
---- !u!114 &1827913054
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fc1515ab76e54f068e2f2207940fab32, type: 3}
-  m_Name: UI/Navigate
-  m_EditorClassIdentifier: Unity.InputSystem::UnityEngine.InputSystem.InputActionReference
-  m_Asset: {fileID: -944628639613478452, guid: 02cc9a2fe59c8df4e9c02141218a987b, type: 3}
-  m_ActionId: c95b2375-e6d9-4b88-9c4c-c5e76515df4b
---- !u!114 &1931954873 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 695629693015090265, guid: 94ecf264a3ed1415a88bfb1eecedb8b8, type: 3}
-  m_PrefabInstance: {fileID: 7352715420777756412}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 62899f850307741f2a39c98a8b639597, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!1 &1964566757
 GameObject:
   m_ObjectHideFlags: 0
@@ -2270,6 +2076,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: tirt.sentinal::Sentinal.ViewSelector
   firstSelected: {fileID: 0}
+  address: {fileID: 0}
   priority: 0
   trackView: 0
   rootView: 0
@@ -2277,7 +2084,6 @@ MonoBehaviour:
   exclusiveView: 0
   hideOtherViews: 0
   preventSelection: 0
-  autoSelectOnEnable: 1
   rememberLastSelected: 1
 --- !u!114 &1964566760
 MonoBehaviour:
@@ -2697,7 +2503,6 @@ SceneRoots:
   m_Roots:
   - {fileID: 154793240}
   - {fileID: 1271424294}
-  - {fileID: 1553078547}
   - {fileID: 847941742}
   - {fileID: 3818455264845069670}
   - {fileID: 7352715420777756412}

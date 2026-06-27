@@ -5,6 +5,76 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.0] - 2026-06-27
+
+### 🚀 Highlights
+
+- **Decoupled Address-Based View Routing (`ViewAddress` & `ViewLink`)**:
+    - **Never drag scene references between scripts again!** Define lightweight `ViewAddress` ScriptableObject keys to represent your UI screens (e.g. `SettingsAddress`, `InventoryAddress`, `PauseMenuAddress`).
+    - Trigger `SentinalViewRouter.OpenView(address)` from anywhere in your codebase — if the panel is already in the scene, Sentinal brings it to focus; if it's missing, Sentinal dynamically instantiates its fallback prefab on the fly!
+    - Attach a **`ViewLink`** component to any standard UGUI Button to make it open an address on click automatically with zero code.
+- **Dynamic Multiplayer Role Mapping (`SentinalPlayer`)**:
+    - Built for local multiplayer, split-screen, and couch co-op! Centralize controller assignments via `SentinalPlayer.SetPrimaryPlayer()` or assign specific role keys (`Player 1`, `Player 2`, etc.).
+    - Action map gates, tab controls, and back-button cancel handlers automatically adapt live when players join, leave, or rebind gamepads.
+- **Managerless Stack Architecture & Fast Play Mode**:
+    - Replaced the scene-bound `SentinalManager` singleton with static `SentinalViewRouter`.
+    - Views register dynamically on enable/disable, **removing the mandatory manager GameObject from your scenes.**
+    - Fully supports Unity's **Fast Play Mode** (Domain Reload Disabled). Unity 2021.3 LTS through Unity 6.5 ready.
+- **Strongly Typed View Grouping (`ViewGroupMask`)**:
+    - Multi-layered UI control! Isolate gameplay HUD overlays, party feeds, and full-screen menus into distinct group channels using bitmasks (`ViewGroupMask`).
+    - Integrated `ViewGroupMask` into `ViewDismissalInputHandler` so cancel/back actions can be filtered to only dismiss matching UI groups.
+    - Features a one-click Editor generator for `SentinalViewGroups.asset` in `Assets/Resources`.
+- **Modular Asynchronous Text Input Gateway**:
+    - Prompt players for text (character naming, room codes, bug reports) using `ITextInputGateway` and `TextInputPrompt`.
+    - Includes `PromptedTextField` component for seamless TextMeshPro integration.
+
+### Changed
+
+- **Core architecture**:
+    - Replaced scene-bound `SentinalManager` singleton with static global `SentinalViewRouter`.
+    - Routing lifecycle now relies directly on `ViewSelector` enable/disable registration flow, removing mandatory manager scene objects.
+    - Full support for Unity Fast Play Mode (Domain Reload disabled).
+- **View Grouping & Editor Tools**:
+    - Replaced raw integer/attribute mask fields with strongly typed `ViewGroupMask` struct supporting bitwise operations (`&`, `|`, `^`, `~`) and `ViewGroupMask.Everything` / `ViewGroupMask.Nothing` presets.
+    - Enhanced `ViewGroupMaskDrawer` and `ViewGroupConfig` for full cross-platform compatibility and zero console warnings across Unity 2021.3 LTS through Unity 6.5.
+    - Improved missing view groups configuration UI in the Inspector with standard `EditorGUI.PrefixLabel` alignment and one-click asset creation.
+- **Documentation**:
+    - Refreshed `README.md` for 4.0.0.
+
+### Added
+
+- **Address-based view routing**:
+    - Added `ViewAddress` ScriptableObject asset for decoupled view targeting and fallback prefab instantiation.
+    - Added `ViewAddressRegistry` for runtime registration and resolution.
+    - Added `ViewLink` component for zero-code UGUI button address binding.
+    - Added `SentinalViewRouter.OpenView(ViewAddress)` API.
+- **Player role mapping utility (`SentinalPlayer`)**:
+    - Added `SentinalPlayer` static registry API (`SetPlayer`, `GetPlayer`, `TryGetPlayer`, `SetPrimaryPlayer`).
+    - Added event-driven `OnPlayerChanged` callbacks to `ViewInputSystemHandler`, `ActionMapGate`, and `ViewDismissalInputHandler` for real-time input re-binding.
+    - Added fallback resolution to primary player (`key 0`) or `PlayerInput.all[0]`.
+- **View Dismissal Group Filtering**:
+    - Added `ViewGroupMask` property to `ViewDismissalInputHandler` for group-filtered cancel/back action handling.
+- **Text Input Gateway System**:
+    - Added `ITextInputGateway` interface and `TextInputGateway` implementation for modal text prompts.
+    - Added `TextInputPrompt` request struct (title, placeholder, initial text, submission callback).
+    - Added `PromptedTextField` component and `PromptedTextFieldEditor` for TextMeshPro input field integration.
+
+### Breaking
+
+- `SentinalManager` public API and event subscriptions must be migrated to `SentinalViewRouter`.
+- Existing project setup that depended on a manager GameObject should be updated to the router-based workflow.
+
+### Migration Notes
+
+If upgrading from 3.x:
+
+- Replace `SentinalManager.Instance` usages with `SentinalViewRouter`.
+- Remove scene dependencies that only existed to host `SentinalManager`.
+- Update custom scripts/events to subscribe to `SentinalViewRouter` static events.
+- If needed, adopt `ViewAddress` for decoupled open calls.
+- Replace old action map manager/overlay setup with per-view `ActionMapGate`.
+- Use `SentinalViewRouter.Refresh()` to refresh all views to reapply action maps and input handlers (e.g. `PlayerInput` created during runtime).
+
 ## [3.2.4] - 2026-02-27
 
 ### Fixed
@@ -60,8 +130,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Changed
 
 - **ActionMapManager**:
-    - Removed all action map history tracking. _Was just causing so many conflicting issues, rather use `ViewSelector`'s `onEnabledActionMaps` and `onDisabledActionMaps` to configure action maps._
-
+    - Removed all action map history tracking. _Was just causing so many conflicting issues, rather use_ `ViewSelector`_'s_ `onEnabledActionMaps` _and_ `onDisabledActionMaps` _to configure action maps._
 - **ViewInputSystemHandler**:
     - When one action map is counted, it is treated as exclusive and toggles the affected `PlayerInput`s' action map(s). e.g If action map "UI" is the only enabled action map, every other action map will be disabled on `PlayerInput`(s).
 
@@ -115,7 +184,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **ActionMapManager**: `PlayerInput` action maps will no longer be modified when switching to a view that does not have a `ViewInputSystemHandler`. _This was causing an issue where `ViewSelector`s without a `ViewInputSystemHandler` were disabling all action maps on affected `PlayerInput`s._
+- **ActionMapManager**: `PlayerInput` action maps will no longer be modified when switching to a view that does not have a `ViewInputSystemHandler`. _This was causing an issue where_ `ViewSelector`_s without a_ `ViewInputSystemHandler` _were disabling all action maps on affected_ `PlayerInput`_s._
 
 ### Changed
 

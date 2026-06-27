@@ -1,7 +1,6 @@
 #if ENABLE_INPUT_SYSTEM
 using UnityEditor;
 using UnityEngine;
-using UnityEngine.InputSystem;
 using Sentinal.InputSystem;
 
 namespace Sentinal.Editor
@@ -9,153 +8,74 @@ namespace Sentinal.Editor
     [CustomEditor(typeof(ViewInputSystemHandler))]
     public class ViewInputSystemHandlerEditor : UnityEditor.Editor
     {
-        private SerializedProperty inputOnlyWhenCurrentProperty;
-        private SerializedProperty viewSelectorProperty;
-        private SerializedProperty playerInputProperty;
-        private SerializedProperty playerIndexProperty;
-        private SerializedProperty applyToAllPlayersProperty;
-        private SerializedProperty onEnabledActionMapsProperty;
-        private SerializedProperty onDisabledActionMapsProperty;
-
-        private void OnEnable()
-        {
-            inputOnlyWhenCurrentProperty = serializedObject.FindProperty("inputOnlyWhenCurrent");
-            viewSelectorProperty = serializedObject.FindProperty("viewSelector");
-            playerInputProperty = serializedObject.FindProperty("playerInput");
-            playerIndexProperty = serializedObject.FindProperty("playerIndex");
-            applyToAllPlayersProperty = serializedObject.FindProperty("applyToAllPlayers");
-            onEnabledActionMapsProperty = serializedObject.FindProperty("onEnabledActionMaps");
-            onDisabledActionMapsProperty = serializedObject.FindProperty("onDisabledActionMaps");
-        }
-
         public override void OnInspectorGUI()
         {
             serializedObject.Update();
 
-            EditorGUILayout.PropertyField(inputOnlyWhenCurrentProperty);
-            if (inputOnlyWhenCurrentProperty.boolValue)
+            var handler = target as ViewInputSystemHandler;
+
+            if (Application.isPlaying)
             {
-                EditorGUI.indentLevel++;
-                EditorGUILayout.PropertyField(viewSelectorProperty);
-                EditorGUI.indentLevel--;
+                bool enabled = handler.IsInputEnabled();
+                string statusText = enabled ? "INPUT ENABLED" : "INPUT DISABLED";
+                Color color = enabled ? EditorColors.Signal : EditorColors.Info;
+
+                var playerInput = handler.GetPlayerInput();
+                if (playerInput != null)
+                {
+                    statusText +=
+                        $" | PlayerIndex: {playerInput.playerIndex} | Name: {handler.GetTrackingPlayerInputName()} | Map: {playerInput.currentActionMap?.name ?? "NONE"}";
+                }
+                else
+                {
+                    statusText +=
+                        handler.GetInputSource() == PlayerInputSource.SentinalPlayerRole
+                            ? $" | WAITING FOR ROLE: {handler.GetPlayerKey()}"
+                            : handler.GetInputSource() == PlayerInputSource.PlayerInputIndex
+                                ? $" | WAITING FOR INDEX: {handler.GetPlayerInputIndex()}"
+                                : " | WAITING FOR DIRECT PLAYER";
+                    if (enabled)
+                        color = EditorColors.Caution;
+                }
+
+                TerminalGUI.DrawStatusBox(statusText, color);
             }
 
-            EditorGUILayout.Space(2);
-            EditorGUILayout.PropertyField(playerInputProperty);
-            EditorGUILayout.PropertyField(playerIndexProperty);
+            SerializedProperty inputSourceProp = serializedObject.FindProperty("inputSource");
+            SerializedProperty playerKeyProp = serializedObject.FindProperty("playerKey");
+            SerializedProperty directPlayerInputProp = serializedObject.FindProperty("directPlayerInput");
+            SerializedProperty playerInputIndexProp = serializedObject.FindProperty("playerInputIndex");
 
-            EditorGUILayout.Space(2);
-            EditorGUILayout.PropertyField(applyToAllPlayersProperty);
-            EditorGUILayout.PropertyField(onEnabledActionMapsProperty, true);
-            EditorGUILayout.PropertyField(onDisabledActionMapsProperty, true);
+            EditorGUILayout.PropertyField(inputSourceProp);
+            if ((PlayerInputSource)inputSourceProp.enumValueIndex == PlayerInputSource.SentinalPlayerRole)
+                EditorGUILayout.PropertyField(playerKeyProp);
+            else if ((PlayerInputSource)inputSourceProp.enumValueIndex == PlayerInputSource.PlayerInputIndex)
+                EditorGUILayout.PropertyField(playerInputIndexProp);
+            else
+                EditorGUILayout.PropertyField(directPlayerInputProp);
+
+            DrawRemainingFields("m_Script", "inputSource", "playerKey", "directPlayerInput", "playerInputIndex");
 
             serializedObject.ApplyModifiedProperties();
 
-            ViewInputSystemHandler handler = target as ViewInputSystemHandler;
-
-            if (!Application.isPlaying)
-                return;
-
-            EditorGUILayout.Space(4);
-
-            bool inputEnabled = handler.IsInputEnabled();
-            PlayerInput playerInput = handler.GetPlayerInput();
-
-            DrawInfoBox(() =>
-            {
-                var onEnabledMaps = handler.GetOnEnabledActionMaps();
-                var onDisabledMaps = handler.GetOnDisabledActionMaps();
-                bool hasConfig =
-                    (onEnabledMaps != null && onEnabledMaps.Length > 0)
-                    || (onDisabledMaps != null && onDisabledMaps.Length > 0);
-
-                string infoLine = "";
-
-                // Input status
-                infoLine += $"Input: {(inputEnabled ? "Enabled" : "Disabled")}";
-
-                // Player info
-                if (playerInput != null)
-                {
-                    infoLine +=
-                        $"  |  Player {playerInput.playerIndex}  |  Map: {playerInput.currentActionMap?.name ?? "None"}";
-                }
-                else if (handler.AppliesToAllPlayers())
-                {
-                    infoLine += $"  |  Target: All Players ({PlayerInput.all.Count})";
-                }
-
-                // Config info
-                if (hasConfig)
-                {
-                    string configInfo = "";
-
-                    if (onEnabledMaps != null && onEnabledMaps.Length > 0)
-                    {
-                        var parts = new System.Collections.Generic.List<string>();
-                        foreach (var cfg in onEnabledMaps)
-                        {
-                            if (cfg == null || string.IsNullOrEmpty(cfg.actionMapName))
-                                continue;
-
-                            parts.Add($"{cfg.actionMapName} ({(cfg.enable ? "Enable" : "Disable")})");
-                        }
-
-                        if (parts.Count > 0)
-                        {
-                            configInfo += $"On Enabled: {string.Join(", ", parts)}";
-                        }
-                    }
-
-                    if (onDisabledMaps != null && onDisabledMaps.Length > 0)
-                    {
-                        var parts = new System.Collections.Generic.List<string>();
-                        foreach (var cfg in onDisabledMaps)
-                        {
-                            if (cfg == null || string.IsNullOrEmpty(cfg.actionMapName))
-                                continue;
-
-                            parts.Add($"{cfg.actionMapName} ({(cfg.enable ? "Enable" : "Disable")})");
-                        }
-
-                        if (parts.Count > 0)
-                        {
-                            if (configInfo.Length > 0)
-                                configInfo += "  |  ";
-
-                            configInfo += $"On Disabled: {string.Join(", ", parts)}";
-                        }
-                    }
-
-                    if (!string.IsNullOrEmpty(configInfo))
-                        infoLine += $"  |  Config: {configInfo}";
-                }
-
-                // Apply color style to the whole line if input is enabled
-                var statusStyle = new GUIStyle(EditorStyles.miniLabel);
-                if (inputEnabled)
-                {
-                    statusStyle.normal.textColor = SentinalEditorColors.AccentColor;
-                }
-
-                EditorGUILayout.LabelField(infoLine, statusStyle);
-            });
-
             if (Application.isPlaying)
+            {
                 Repaint();
+            }
         }
 
-        private void DrawInfoBox(System.Action content)
+        private void DrawRemainingFields(params string[] excluded)
         {
-            var originalColor = GUI.backgroundColor;
-            GUI.backgroundColor = SentinalEditorColors.BoxColor;
+            var iterator = serializedObject.GetIterator();
+            bool enterChildren = true;
+            while (iterator.NextVisible(enterChildren))
+            {
+                enterChildren = false;
+                if (System.Array.IndexOf(excluded, iterator.name) >= 0)
+                    continue;
 
-            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
-            GUI.backgroundColor = originalColor;
-
-            content?.Invoke();
-
-            EditorGUILayout.EndVertical();
+                EditorGUILayout.PropertyField(iterator, true);
+            }
         }
     }
 }

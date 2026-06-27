@@ -31,7 +31,7 @@ namespace Sentinal
         /// The group mask for this view. Views with overlapping group masks share groups.
         /// A mask of 0 means no groups are assigned (affects all views for backward compatibility).
         /// </summary>
-        public int GroupMask { get; }
+        public ViewGroupMask GroupMask { get; }
 
         /// <summary>
         /// Whether this view is exclusive. If true, it will close all other views (except root views) when opened.
@@ -54,11 +54,6 @@ namespace Sentinal
         /// Whether to prevent selection of this view. This is useful for views that interact through only input actions.
         /// </summary>
         public bool PreventSelection { get; }
-
-        /// <summary>
-        /// Whether to automatically select the first selected GameObject on enable.
-        /// </summary>
-        public bool AutoSelectOnEnable { get; }
 
         /// <summary>
         /// Whether to remember the last selected GameObject.

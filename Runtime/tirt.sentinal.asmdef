@@ -2,8 +2,7 @@
     "name": "tirt.sentinal",
     "rootNamespace": "Sentinal",
     "references": [
-        "Unity.TextMeshPro",
-        "Unity.InputSystem"
+        "Unity.TextMeshPro"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

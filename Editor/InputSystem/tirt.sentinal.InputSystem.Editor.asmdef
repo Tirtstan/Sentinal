@@ -13,7 +13,8 @@
     "excludePlatforms": [],
     "allowUnsafeCode": false,
     "autoReferenced": true,
-    "defineConstraints": [],
-    "versionDefines": [],
+    "defineConstraints": [
+        "ENABLE_INPUT_SYSTEM"
+    ],
     "noEngineReferences": false
 }
