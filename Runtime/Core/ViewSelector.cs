@@ -1,6 +1,8 @@
 using System.Collections;
+using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
 
 namespace Sentinal
 {
@@ -30,11 +32,10 @@ namespace Sentinal
 
         [Header("Grouping")]
         [SerializeField]
-        [ViewGroupMask]
         [Tooltip(
             "Selected groups for this view. Exclusive and hide behaviors will only affect views in the same group(s)."
         )]
-        private int groupMask;
+        private ViewGroupMask groupMask = 1;
 
         [SerializeField]
         [Tooltip(
@@ -69,18 +70,62 @@ namespace Sentinal
         )]
         private bool selectOnEnable = true;
 
-        public GameObject FirstSelected => firstSelected;
+        public GameObject FirstSelected
+        {
+            get => firstSelected;
+            set => firstSelected = value;
+        }
         public GameObject LastSelected => lastSelected;
-        public ViewAddress Address => address;
-        public int Priority => priority;
-        public bool RootView => rootView;
-        public int GroupMask => groupMask;
-        public bool ExclusiveView => exclusiveView;
-        public bool HideOtherViews => hideOtherViews;
-        public bool TrackView => trackView;
-        public bool PreventSelection => preventSelection;
-        public bool RememberLastSelected => rememberLastSelected;
-        public bool SelectOnEnable => selectOnEnable;
+        public ViewAddress Address
+        {
+            get => address;
+            set => address = value;
+        }
+        public int Priority
+        {
+            get => priority;
+            set => priority = value;
+        }
+        public bool RootView
+        {
+            get => rootView;
+            set => rootView = value;
+        }
+        public ViewGroupMask GroupMask
+        {
+            get => groupMask;
+            set => groupMask = value;
+        }
+        public bool ExclusiveView
+        {
+            get => exclusiveView;
+            set => exclusiveView = value;
+        }
+        public bool HideOtherViews
+        {
+            get => hideOtherViews;
+            set => hideOtherViews = value;
+        }
+        public bool TrackView
+        {
+            get => trackView;
+            set => trackView = value;
+        }
+        public bool PreventSelection
+        {
+            get => preventSelection;
+            set => preventSelection = value;
+        }
+        public bool RememberLastSelected
+        {
+            get => rememberLastSelected;
+            set => rememberLastSelected = value;
+        }
+        public bool SelectOnEnable
+        {
+            get => selectOnEnable;
+            set => selectOnEnable = value;
+        }
         public bool IsActive => gameObject.activeInHierarchy;
 
         private GameObject lastSelected;
@@ -155,6 +200,9 @@ namespace Sentinal
             }
 
             if (selected == null || !selected.activeInHierarchy)
+                return;
+
+            if (EventSystem.current.currentSelectedGameObject == selected)
                 return;
 
             EventSystem.current.SetSelectedGameObject(selected);

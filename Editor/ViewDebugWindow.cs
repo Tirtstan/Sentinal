@@ -289,6 +289,20 @@ namespace Sentinal.Editor
                     }
                 );
 
+                string parentName = view.transform.parent != null ? view.transform.parent.name : "None";
+                titleRow.Add(
+                    new Label($" (Parent: {parentName})")
+                    {
+                        style =
+                        {
+                            unityFontStyleAndWeight = FontStyle.Normal,
+                            color = EditorGUIUtility.isProSkin
+                                ? new Color(0.70f, 0.70f, 0.70f)
+                                : new Color(0.35f, 0.35f, 0.35f)
+                        }
+                    }
+                );
+
                 if (isCurrent)
                     titleRow.Add(CreateBadge("Current Focus", new Color(0.36f, 0.68f, 1f)));
                 if (isTopPriority)
@@ -385,8 +399,12 @@ namespace Sentinal.Editor
                 card.style.borderLeftColor = new Color(1f, 0.70f, 0.28f);
 
                 var ownerName = entry.owner != null ? entry.owner.name : "Null Owner";
+                var ownerParent =
+                    entry.owner != null && entry.owner.transform.parent != null
+                        ? entry.owner.transform.parent.name
+                        : "None";
                 var ownerGroup = entry.owner != null ? GetGroupMaskDisplayName(entry.owner.GroupMask) : "None";
-                var ownerLabel = new Label($"Owner: {ownerName} | Group: {ownerGroup}")
+                var ownerLabel = new Label($"Owner: {ownerName} (Parent: {ownerParent}) | Group: {ownerGroup}")
                 {
                     style = { color = new Color(1f, 0.70f, 0.28f), unityFontStyleAndWeight = FontStyle.Bold }
                 };
@@ -397,8 +415,10 @@ namespace Sentinal.Editor
                 foreach (var hidden in entry.views)
                 {
                     var hName = hidden != null ? hidden.name : "Null";
+                    var hParent =
+                        hidden != null && hidden.transform.parent != null ? hidden.transform.parent.name : "None";
                     var hiddenGroup = hidden != null ? GetGroupMaskDisplayName(hidden.GroupMask) : "None";
-                    var hiddenLabel = new Label($"  - View: {hName} | Group: {hiddenGroup}")
+                    var hiddenLabel = new Label($"  - View: {hName} (Parent: {hParent}) | Group: {hiddenGroup}")
                     {
                         style =
                         {
@@ -558,16 +578,17 @@ namespace Sentinal.Editor
             button.style.marginRight = 6;
         }
 
-        private string GetGroupMaskDisplayName(int groupMask)
+        private string GetGroupMaskDisplayName(ViewGroupMask groupMask)
         {
             if (groupMask == 0)
                 return "None";
 
-            if (groupConfig == null || groupConfig.Groups == null || groupConfig.Groups.Count == 0)
-                return $"Mask: {groupMask}";
+            if (groupConfig == null)
+                return $"Mask: {groupMask.Value}";
 
             groupBuilder.Clear();
-            for (int i = 0; i < groupConfig.Groups.Count; i++)
+            int groupCount = groupConfig.GroupCount;
+            for (int i = 0; i < groupCount; i++)
             {
                 int bit = 1 << i;
                 if ((groupMask & bit) == 0)
@@ -580,7 +601,7 @@ namespace Sentinal.Editor
                 groupBuilder.Append(string.IsNullOrEmpty(groupName) ? $"Group {i}" : groupName);
             }
 
-            return groupBuilder.Length == 0 ? $"Mask: {groupMask}" : groupBuilder.ToString();
+            return groupBuilder.Length == 0 ? $"Mask: {groupMask.Value}" : groupBuilder.ToString();
         }
     }
 }

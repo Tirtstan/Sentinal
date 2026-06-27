@@ -38,6 +38,8 @@ namespace Sentinal
         private static readonly Stack<(ViewSelector owner, List<ViewSelector> views)> hiddenViewStack = new();
         private static readonly StringBuilder viewInfoBuilder = new();
         private static bool lastNonRootViewPresence;
+        private static bool isProcessing;
+        private static readonly Queue<Action> deferredActions = new();
 
         /// <summary>
         /// Gets the most recently opened view in the history.
@@ -54,13 +56,14 @@ namespace Sentinal
         /// <summary>
         /// Checks if any views are open, optionally filtered by a group mask.
         /// </summary>
-        public static bool AnyViewsOpen(int groupMask = -1)
+        public static bool AnyViewsOpen(ViewGroupMask? groupMask = null)
         {
+            int mask = groupMask?.Value ?? -1;
             foreach (var view in viewHistory)
             {
                 if (view != null && view.IsActive)
                 {
-                    if (groupMask >= 0 && (groupMask & view.GroupMask) == 0)
+                    if (mask >= 0 && (mask & view.GroupMask) == 0)
                         continue;
 
                     return true;
@@ -73,13 +76,14 @@ namespace Sentinal
         /// <summary>
         /// Checks if any views are open that are not root views, optionally filtered by a group mask.
         /// </summary>
-        public static bool AnyNonRootViewsOpen(int groupMask = -1)
+        public static bool AnyNonRootViewsOpen(ViewGroupMask? groupMask = null)
         {
+            int mask = groupMask?.Value ?? -1;
             foreach (var view in viewHistory)
             {
                 if (view != null && view.IsActive && !view.RootView)
                 {
-                    if (groupMask >= 0 && (groupMask & view.GroupMask) == 0)
+                    if (mask >= 0 && (mask & view.GroupMask) == 0)
                         continue;
 
                     return true;
@@ -96,11 +100,26 @@ namespace Sentinal
             if (view == null || viewHistory.Contains(view))
                 return;
 
-            ViewSelector previousFocusedView = CurrentView;
-            viewHistory.AddLast(view);
-            OnAdd?.Invoke(view);
-            NotifyFocusChanged(previousFocusedView, selectCurrentView: true);
-            NotifyNonRootViewPresenceChangedIfNeeded();
+            if (isProcessing)
+            {
+                deferredActions.Enqueue(() => Add(view));
+                return;
+            }
+
+            isProcessing = true;
+            try
+            {
+                ViewSelector previousFocusedView = CurrentView;
+                viewHistory.AddLast(view);
+                OnAdd?.Invoke(view);
+                NotifyFocusChanged(previousFocusedView, selectCurrentView: true);
+                NotifyNonRootViewPresenceChangedIfNeeded();
+            }
+            finally
+            {
+                isProcessing = false;
+                ProcessDeferredActions();
+            }
         }
 
         public static void Remove(ViewSelector view)
@@ -108,12 +127,35 @@ namespace Sentinal
             if (view == null)
                 return;
 
-            ViewSelector previousFocusedView = CurrentView;
+            if (isProcessing)
+            {
+                deferredActions.Enqueue(() => Remove(view));
+                return;
+            }
 
-            viewHistory.Remove(view);
-            OnRemove?.Invoke(view);
-            NotifyFocusChanged(previousFocusedView, selectCurrentView: true);
-            NotifyNonRootViewPresenceChangedIfNeeded();
+            isProcessing = true;
+            try
+            {
+                ViewSelector previousFocusedView = CurrentView;
+                viewHistory.Remove(view);
+                OnRemove?.Invoke(view);
+                NotifyFocusChanged(previousFocusedView, selectCurrentView: true);
+                NotifyNonRootViewPresenceChangedIfNeeded();
+            }
+            finally
+            {
+                isProcessing = false;
+                ProcessDeferredActions();
+            }
+        }
+
+        private static void ProcessDeferredActions()
+        {
+            while (deferredActions.Count > 0)
+            {
+                var action = deferredActions.Dequeue();
+                action?.Invoke();
+            }
         }
 
         /// <summary>
@@ -191,24 +233,24 @@ namespace Sentinal
             return view;
         }
 
-        /// <summary>
-        /// Closes all views.
+        /// <summary>        /// Closes all views.
         /// </summary>
         /// <param name="excludeRootViews">If true, root views will not be closed.</param>
-        public static void CloseAllViews(bool excludeRootViews = false) => CloseAllViews(-1, excludeRootViews);
+        public static void CloseAllViews(bool excludeRootViews = false) => CloseAllViews(null, excludeRootViews);
 
         /// <summary>
         /// Closes all views that match the given group mask.
         /// </summary>
-        public static void CloseAllViews(int groupMask, bool excludeRootViews = false)
+        public static void CloseAllViews(ViewGroupMask? groupMask, bool excludeRootViews = false)
         {
+            int mask = groupMask?.Value ?? -1;
             var viewsToClose = new List<ViewSelector>(viewHistory);
             foreach (var view in viewsToClose)
             {
                 if (view.RootView && excludeRootViews)
                     continue;
 
-                if (groupMask >= 0 && (groupMask & view.GroupMask) == 0)
+                if (mask >= 0 && (mask & view.GroupMask) == 0)
                     continue;
 
                 CloseView(view);
@@ -228,8 +270,9 @@ namespace Sentinal
         /// Uses hardened two-pass approach: marks all targets as hidden BEFORE disabling any,
         /// preventing same-frame race conditions.
         /// </summary>
-        public static void HideAllViews(int groupMask, ViewSelector excludeView)
+        public static void HideAllViews(ViewGroupMask? groupMask, ViewSelector excludeView)
         {
+            int mask = groupMask?.Value ?? -1;
             var targets = new List<ViewSelector>();
 
             var snapshot = new List<ViewSelector>(viewHistory);
@@ -238,7 +281,7 @@ namespace Sentinal
                 if (view == excludeView || !view.gameObject.activeInHierarchy)
                     continue;
 
-                if (groupMask >= 0 && (groupMask & view.GroupMask) == 0)
+                if (mask >= 0 && (mask & view.GroupMask) == 0)
                     continue;
 
                 targets.Add(view);
@@ -431,7 +474,10 @@ namespace Sentinal
                 else
                 {
                     string marker = view == current ? " *" : "";
-                    viewInfoBuilder.AppendLine($"  [{index}] {view.name} (P:{view.Priority}){marker}");
+                    string parentName = view.transform.parent != null ? view.transform.parent.name : "None";
+                    viewInfoBuilder.AppendLine(
+                        $"  [{index}] {view.name} (Parent: {parentName}, P:{view.Priority}){marker}"
+                    );
                 }
 
                 index++;
@@ -450,6 +496,8 @@ namespace Sentinal
             OnSwitch = null;
             OnNonRootViewPresenceChanged = null;
             lastNonRootViewPresence = false;
+            isProcessing = false;
+            deferredActions.Clear();
         }
     }
 }

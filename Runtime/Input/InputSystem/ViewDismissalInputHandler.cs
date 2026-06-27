@@ -1,5 +1,6 @@
 #if ENABLE_INPUT_SYSTEM
 using System.Collections;
+using Sentinal;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -34,10 +35,20 @@ namespace Sentinal.InputSystem
         [Tooltip("Action to refocus the last selected element (e.g., 'Focus').")]
         private InputActionSelector focusAction = new() { useActionName = true, actionName = "UI/Focus" };
 
-        [Header("Configs")]
         [SerializeField]
         [Tooltip("Fire on action release (canceled) instead of action press (performed).")]
         private bool cancelActionOnRelease;
+
+        [Header("Grouping")]
+        [SerializeField]
+        [Tooltip("Optional group mask to filter which views can be dismissed by this handler. Defaults to Everything.")]
+        private ViewGroupMask groupMask = ViewGroupMask.Everything;
+
+        public ViewGroupMask GroupMask
+        {
+            get => groupMask;
+            set => groupMask = value;
+        }
 
         private PlayerInput playerInput;
         private InputAction cancelInputAction;
@@ -188,6 +199,9 @@ namespace Sentinal.InputSystem
             if (pendingCloseView == null || pendingCloseView.RootView)
                 return;
 
+            if (groupMask.Value >= 0 && (groupMask.Value & pendingCloseView.GroupMask) == 0)
+                return;
+
             closeRequestedThisFrame = true;
             StartCoroutine(CloseCurrentViewNextFrame());
         }
@@ -204,7 +218,18 @@ namespace Sentinal.InputSystem
             }
 
             if (pendingCloseView.IsActive)
-                pendingCloseView.Close();
+            {
+                var closeable = pendingCloseView.GetComponent<ICloseableView>();
+                if (closeable == null)
+                    closeable = pendingCloseView.GetComponentInParent<ICloseableView>();
+                if (closeable == null)
+                    closeable = pendingCloseView.GetComponentInChildren<ICloseableView>();
+
+                if (closeable != null)
+                    closeable.Close();
+                else
+                    pendingCloseView.Close();
+            }
 
             pendingCloseView = null;
         }
