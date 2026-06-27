@@ -93,7 +93,7 @@ Common setup:
 | Input-driven controls | `InputActionButton`, `InputActionButtonHold`, `TabbedView`, `TabbedViewInputHandler`, `DisplayInputString` | Trigger buttons, hold actions, tab switching, and input glyph-style labels from Input Actions. |
 | Text prompts          | `TextInputGateway`, `PromptedTextField`                                                                    | Present platform-appropriate text entry flows from normal UGUI buttons.                        |
 
-Read the full component guide here: [Documentation/Components.md](Documentation/Components.md).
+Read the full component guide here: [Components.md](Documentation/Components.md).
 
 ## Installation
 

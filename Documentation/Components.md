@@ -314,14 +314,3 @@ Important fields:
 | A view cannot be opened by address     | Confirm the `ViewAddress` asset is assigned to the `ViewSelector`, and that the view is registered or has a resolvable fallback. |
 | Gameplay input still fires under menus | Add `ActionMapGate` to the focused menu and verify the target player selection.                                                  |
 | Prompts do not open                    | Register a `TextInputGateway` presenter before using `PromptedTextField`.                                                        |
-
-## Image Placeholders
-
-The docs intentionally reference these screenshots so package pages look complete once images are added or replaced:
-
-- `Documentation/Images/Header.png`
-- `Documentation/Images/SentinalInspector.png`
-- `Documentation/Images/ViewSelector.png`
-- `Documentation/Images/ViewInput.png`
-- `Documentation/Images/ActionMapManager.png`
-- `Documentation/Images/ViewDismissal.png`
