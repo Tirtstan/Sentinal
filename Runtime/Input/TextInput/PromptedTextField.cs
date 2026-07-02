@@ -15,6 +15,9 @@ namespace Sentinal.Input
     {
         [Header("Components")]
         [SerializeField]
+        private TextMeshProUGUI captionText;
+
+        [SerializeField]
         private TextMeshProUGUI valueText;
 
         [Header("Prompt")]
@@ -30,19 +33,14 @@ namespace Sentinal.Input
         [SerializeField]
         private int maxLength = 128;
 
-        [Header("Display")]
-        [SerializeField]
-        [Tooltip("Shown when the value is empty. Also stored when the user clears the field.")]
-        private string emptyDisplayText = string.Empty;
-
-        [SerializeField]
-        private string value = string.Empty;
-
         [Header("Events")]
         public UnityEvent<string> OnValueChanged;
 
         private Button button;
         private bool isPromptOpen;
+        private string emptyDisplayText = string.Empty;
+        private string value = string.Empty;
+        private int promptClosedFrame = -1;
 
         public bool IsPromptOpen => isPromptOpen;
 
@@ -70,6 +68,7 @@ namespace Sentinal.Input
                     valueText = label.GetComponent<TextMeshProUGUI>();
             }
 
+            emptyDisplayText = captionText != null ? captionText.text : string.Empty;
             RefreshLabel();
         }
 
@@ -106,7 +105,7 @@ namespace Sentinal.Input
 
         public void OpenPrompt()
         {
-            if (isPromptOpen || !isActiveAndEnabled)
+            if (isPromptOpen || !isActiveAndEnabled || Time.frameCount == promptClosedFrame)
                 return;
 
             if (!TextInputGateway.IsAvailable)
@@ -127,10 +126,15 @@ namespace Sentinal.Input
                 prompt,
                 confirmed =>
                 {
+                    promptClosedFrame = Time.frameCount;
                     isPromptOpen = false;
                     ApplyConfirmedValue(confirmed);
                 },
-                () => isPromptOpen = false
+                () =>
+                {
+                    promptClosedFrame = Time.frameCount;
+                    isPromptOpen = false;
+                }
             );
         }
 
@@ -164,6 +168,13 @@ namespace Sentinal.Input
                 return;
 
             valueText.SetText(GetDisplayText(value));
+            bool hasValue = !string.IsNullOrEmpty(GetEffectiveValue());
+
+            if (valueText.gameObject.activeSelf != hasValue)
+                valueText.gameObject.SetActive(hasValue);
+
+            if (captionText != null && captionText.gameObject.activeSelf == hasValue)
+                captionText.gameObject.SetActive(!hasValue);
         }
 
         private string GetPromptInitialValue(string currentValue)

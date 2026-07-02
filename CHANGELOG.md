@@ -5,22 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.1.0] - 2026-07-02
+
+### Added
+
+- **Input action buttons (**`InputActionButtonBase`**)**:
+    - `deferExecution` — (default: `true`) defers click handling to the next frame so input does not carry over to newly activated views.
+    - `requireFreshPress` — (default: `true`) ignores held inputs when the component becomes active, preventing input bleeding from the previous view.
+    - `ValidateFreshPress` helper integrated into `InputActionButton` and `InputActionButtonHold`.
+- **Prompted text field (**`PromptedTextField`**)**:
+    - Optional `captionText` with caption/value visibility toggling based on whether a value is set.
+    - Same-frame re-open guard after a prompt is dismissed.
+
+### Changed
+
+- **PromptedTextField** — `emptyDisplayText` and the stored value are now runtime-managed; empty display text is seeded from `captionText` on awake.
+
+## [4.0.1] - 2026-06-28
+
+### Fixed
+
+- **ViewDismissalInputHandler** — `ICloseableView` resolution now uses `TryGetComponent` with cleaner parent/children fallback when closing a view.
+
 ## [4.0.0] - 2026-06-27
 
 ### 🚀 Highlights
 
-- **Decoupled Address-Based View Routing (`ViewAddress` & `ViewLink`)**:
+- **Decoupled Address-Based View Routing (**`ViewAddress` **&** `ViewLink`**)**:
     - **Never drag scene references between scripts again!** Define lightweight `ViewAddress` ScriptableObject keys to represent your UI screens (e.g. `SettingsAddress`, `InventoryAddress`, `PauseMenuAddress`).
     - Trigger `SentinalViewRouter.OpenView(address)` from anywhere in your codebase — if the panel is already in the scene, Sentinal brings it to focus; if it's missing, Sentinal dynamically instantiates its fallback prefab on the fly!
-    - Attach a **`ViewLink`** component to any standard UGUI Button to make it open an address on click automatically with zero code.
-- **Dynamic Multiplayer Role Mapping (`SentinalPlayer`)**:
+    - Attach a `ViewLink` component to any standard UGUI Button to make it open an address on click automatically with zero code.
+- **Dynamic Multiplayer Role Mapping (**`SentinalPlayer`**)**:
     - Built for local multiplayer, split-screen, and couch co-op! Centralize controller assignments via `SentinalPlayer.SetPrimaryPlayer()` or assign specific role keys (`Player 1`, `Player 2`, etc.).
     - Action map gates, tab controls, and back-button cancel handlers automatically adapt live when players join, leave, or rebind gamepads.
 - **Managerless Stack Architecture & Fast Play Mode**:
     - Replaced the scene-bound `SentinalManager` singleton with static `SentinalViewRouter`.
     - Views register dynamically on enable/disable, **removing the mandatory manager GameObject from your scenes.**
     - Fully supports Unity's **Fast Play Mode** (Domain Reload Disabled). Unity 2021.3 LTS through Unity 6.5 ready.
-- **Strongly Typed View Grouping (`ViewGroupMask`)**:
+- **Strongly Typed View Grouping (**`ViewGroupMask`**)**:
     - Multi-layered UI control! Isolate gameplay HUD overlays, party feeds, and full-screen menus into distinct group channels using bitmasks (`ViewGroupMask`).
     - Integrated `ViewGroupMask` into `ViewDismissalInputHandler` so cancel/back actions can be filtered to only dismiss matching UI groups.
     - Features a one-click Editor generator for `SentinalViewGroups.asset` in `Assets/Resources`.
@@ -48,7 +70,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Added `ViewAddressRegistry` for runtime registration and resolution.
     - Added `ViewLink` component for zero-code UGUI button address binding.
     - Added `SentinalViewRouter.OpenView(ViewAddress)` API.
-- **Player role mapping utility (`SentinalPlayer`)**:
+- **Player role mapping utility (**`SentinalPlayer`**)**:
     - Added `SentinalPlayer` static registry API (`SetPlayer`, `GetPlayer`, `TryGetPlayer`, `SetPrimaryPlayer`).
     - Added event-driven `OnPlayerChanged` callbacks to `ViewInputSystemHandler`, `ActionMapGate`, and `ViewDismissalInputHandler` for real-time input re-binding.
     - Added fallback resolution to primary player (`key 0`) or `PlayerInput.all[0]`.

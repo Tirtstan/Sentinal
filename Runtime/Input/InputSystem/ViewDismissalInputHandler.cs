@@ -1,6 +1,5 @@
 #if ENABLE_INPUT_SYSTEM
 using System.Collections;
-using Sentinal;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -219,11 +218,9 @@ namespace Sentinal.InputSystem
 
             if (pendingCloseView.IsActive)
             {
-                var closeable = pendingCloseView.GetComponent<ICloseableView>();
-                if (closeable == null)
+                if (!pendingCloseView.TryGetComponent(out ICloseableView closeable))
                     closeable = pendingCloseView.GetComponentInParent<ICloseableView>();
-                if (closeable == null)
-                    closeable = pendingCloseView.GetComponentInChildren<ICloseableView>();
+                closeable ??= pendingCloseView.GetComponentInChildren<ICloseableView>();
 
                 if (closeable != null)
                     closeable.Close();

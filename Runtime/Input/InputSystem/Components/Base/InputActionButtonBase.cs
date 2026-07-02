@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
+using System.Collections;
 
 namespace Sentinal.InputSystem.Components
 {
@@ -24,9 +25,22 @@ namespace Sentinal.InputSystem.Components
         [Tooltip("This enables button visual feedback and re-selection.")]
         protected bool sendPointerEvents = true;
 
+        [SerializeField]
+        [Tooltip(
+            "Defers click execution to the next frame to prevent input events carrying over to newly activated views."
+        )]
+        protected bool deferExecution = true;
+
+        [SerializeField]
+        [Tooltip(
+            "Requires the input action to be released before accepting new presses when this component becomes active, preventing input bleeding from previous views."
+        )]
+        protected bool requireFreshPress = true;
+
         protected Button button;
         protected InputAction inputAction;
         protected EventSystem eventSystem;
+        protected bool wasPressedOnSubscribe;
 
         protected override void Awake()
         {
@@ -61,6 +75,8 @@ namespace Sentinal.InputSystem.Components
                 return;
             }
 
+            wasPressedOnSubscribe = requireFreshPress && inputAction.IsPressed();
+
             SubscribeToInputAction();
             isSubscribed = true;
         }
@@ -73,7 +89,26 @@ namespace Sentinal.InputSystem.Components
                 inputAction = null;
             }
 
+            wasPressedOnSubscribe = false;
             isSubscribed = false;
+        }
+
+        /// <summary>
+        /// Validates whether the current input action event is valid based on fresh press rules.
+        /// Returns true if the event should be processed, or false if it should be ignored.
+        /// </summary>
+        protected bool ValidateFreshPress(bool isCancelEvent = false)
+        {
+            if (!requireFreshPress || !wasPressedOnSubscribe)
+                return true;
+
+            if (inputAction == null)
+                return false;
+
+            if (!inputAction.IsPressed() || isCancelEvent)
+                wasPressedOnSubscribe = false;
+
+            return false;
         }
 
         /// <summary>
@@ -92,6 +127,30 @@ namespace Sentinal.InputSystem.Components
         protected void Click()
         {
             if (button == null)
+                return;
+
+            if (deferExecution)
+            {
+                StartCoroutine(ClickNextFrame());
+            }
+            else
+            {
+                ExecuteClick();
+            }
+        }
+
+        private IEnumerator ClickNextFrame()
+        {
+            yield return null;
+            ExecuteClick();
+        }
+
+        /// <summary>
+        /// Executes the actual click event logic.
+        /// </summary>
+        protected void ExecuteClick()
+        {
+            if (button == null || !button.gameObject.activeInHierarchy)
                 return;
 
             if (sendPointerEvents && eventSystem != null)

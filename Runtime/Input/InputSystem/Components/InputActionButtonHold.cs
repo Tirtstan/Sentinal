@@ -55,6 +55,9 @@ namespace Sentinal.InputSystem.Components
 
         private void OnActionStarted(InputAction.CallbackContext context)
         {
+            if (!ValidateFreshPress(isCancelEvent: false))
+                return;
+
             if (context.interaction is HoldInteraction hold)
             {
                 SendPointerDown();
@@ -64,12 +67,18 @@ namespace Sentinal.InputSystem.Components
 
         private void OnActionPerformed(InputAction.CallbackContext context)
         {
+            if (!ValidateFreshPress(isCancelEvent: false))
+                return;
+
             if (context.interaction is HoldInteraction)
                 Click();
         }
 
         private void OnActionCanceled(InputAction.CallbackContext context)
         {
+            if (!ValidateFreshPress(isCancelEvent: true))
+                return;
+
             if (context.interaction is HoldInteraction)
             {
                 SendPointerUp();

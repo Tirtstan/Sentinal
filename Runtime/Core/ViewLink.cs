@@ -15,13 +15,31 @@ namespace Sentinal
         [Tooltip("The ViewAddress to navigate to when clicked.")]
         private ViewAddress targetAddress;
 
+        private Button button;
+
         private void Awake()
         {
-            GetComponent<Button>().onClick.AddListener(() =>
+            button = GetComponent<Button>();
+        }
+
+        private void OnEnable()
+        {
+            button.onClick.AddListener(OnClick);
+        }
+
+        private void OnClick()
+        {
+            if (targetAddress != null)
             {
-                if (targetAddress != null)
-                    ViewAddressRegistry.Resolve(targetAddress)?.Open();
-            });
+                var view = ViewAddressRegistry.Resolve(targetAddress);
+                if (view != null)
+                    view.Open();
+            }
+        }
+
+        private void OnDisable()
+        {
+            button.onClick.RemoveListener(OnClick);
         }
     }
 }

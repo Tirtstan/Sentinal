@@ -37,7 +37,8 @@ namespace Sentinal.Editor
 
                 if (player != null)
                 {
-                    statusText += $" | PlayerIndex: {player.playerIndex} | Map: {player.currentActionMap?.name ?? "NONE"}";
+                    statusText +=
+                        $" | PlayerIndex: {player.playerIndex} | Map: {player.currentActionMap?.name ?? "NONE"}";
                 }
                 else
                 {

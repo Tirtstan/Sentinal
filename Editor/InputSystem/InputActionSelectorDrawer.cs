@@ -21,7 +21,12 @@ namespace Sentinal.Editor
             const float gap = 2f;
             float toggleWidth = (buttonWidth * 2f) + gap;
 
-            Rect fieldRect = new Rect(contentRect.x, contentRect.y, contentRect.width - toggleWidth - 4f, contentRect.height);
+            Rect fieldRect = new Rect(
+                contentRect.x,
+                contentRect.y,
+                contentRect.width - toggleWidth - 4f,
+                contentRect.height
+            );
             Rect nameBtnRect = new Rect(fieldRect.xMax + 4f, contentRect.y, buttonWidth, contentRect.height);
             Rect refBtnRect = new Rect(nameBtnRect.xMax + gap, contentRect.y, buttonWidth, contentRect.height);
 

@@ -31,6 +31,9 @@ namespace Sentinal.InputSystem.Components
 
         private void OnActionPerformed(InputAction.CallbackContext context)
         {
+            if (!ValidateFreshPress(isCancelEvent: false))
+                return;
+
             if (sendPointerEvents)
             {
                 if (eventSystem == null)
@@ -49,6 +52,9 @@ namespace Sentinal.InputSystem.Components
 
         private void OnActionCanceled(InputAction.CallbackContext context)
         {
+            if (!ValidateFreshPress(isCancelEvent: true))
+                return;
+
             if (sendPointerEvents)
             {
                 if (eventSystem == null)
