@@ -24,7 +24,8 @@ namespace Sentinal.Editor
                 var player = handler.GetPlayerInput();
                 if (player != null)
                 {
-                    statusText += $" | PlayerIndex: {player.playerIndex} | Map: {player.currentActionMap?.name ?? "NONE"}";
+                    statusText +=
+                        $" | PlayerIndex: {player.playerIndex} | Map: {player.currentActionMap?.name ?? "NONE"}";
                     if (!shouldSubscribe)
                         color = EditorColors.Caution;
                 }
