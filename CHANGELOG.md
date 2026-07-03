@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.1.1] - 2026-07-03
+
+### Added
+
+- **`InputFreshPressGate`** — shared helper for ignoring in-progress presses when input handlers arm (on subscribe or view switch).
+- **`ViewDismissalInputHandler.requireFreshPress`** — (default: `true`) requires Cancel to be released after the current view changes before dismissing, preventing the same press from closing a newly focused view (e.g. overlay → parent screen).
+
+### Changed
+
+- **`InputActionButtonBase`** — fresh-press filtering now delegates to `InputFreshPressGate` instead of inline state.
+
 ## [4.1.0] - 2026-07-02
 
 ### Added

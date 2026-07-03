@@ -19,7 +19,7 @@ _The Sentinal Debug Window (**Window > Sentinal > Debug**) displaying active vie
 - **Controller-first focus**: Automatically selects the right button when views open, remembers the last selected control, and resolves overlapping views by priority and recency.
 - **Stack-based back behavior**: `ViewDismissalInputHandler` wires cancel/back input to the top non-root view, so `Esc`, `B`, or `Circle` behaves consistently across screens.
 - **Layer-safe menus**: `ViewGroupMask` or Root views keeps gameplay HUDs, popups, pause menus, overlays, and tab panels from closing or hiding each other accidentally.
-- **Input System integration**: Gate action maps per focused view, target primary/all/specific players, and bind input actions directly to buttons and tabs.
+- **Input System integration**: Gate action maps per focused view, target primary/all/specific players, bind actions to buttons and tabs, with fresh-press gating to prevent input bleeding on cancel and input buttons (on by default).
 - **No manager prefab required**: Views self-register with the static router, and Sentinal resets its static state for Fast Enter Play Mode.
 
 ## Quick Start

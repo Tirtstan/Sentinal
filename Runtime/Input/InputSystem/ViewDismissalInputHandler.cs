@@ -38,6 +38,12 @@ namespace Sentinal.InputSystem
         [Tooltip("Fire on action release (canceled) instead of action press (performed).")]
         private bool cancelActionOnRelease;
 
+        [SerializeField]
+        [Tooltip(
+            "Requires Cancel to be released before dismissing after the current view changes, preventing the same press from closing a newly focused view."
+        )]
+        private bool requireFreshPress = true;
+
         [Header("Grouping")]
         [SerializeField]
         [Tooltip("Optional group mask to filter which views can be dismissed by this handler. Defaults to Everything.")]
@@ -55,6 +61,7 @@ namespace Sentinal.InputSystem
         private bool isSubscribed;
         private bool closeRequestedThisFrame;
         private ViewSelector pendingCloseView;
+        private InputFreshPressGate cancelFreshPressGate;
 
         private void Awake()
         {
@@ -69,6 +76,8 @@ namespace Sentinal.InputSystem
             if (inputSource == PlayerInputSource.SentinalPlayerRole)
                 SentinalPlayer.OnPlayerChanged += OnPlayerRoleChanged;
 
+            SentinalViewRouter.OnSwitch += OnViewSwitch;
+
             if (playerInput != null && !isSubscribed)
                 SubscribeToInputActions();
         }
@@ -77,7 +86,17 @@ namespace Sentinal.InputSystem
         {
             if (inputSource == PlayerInputSource.SentinalPlayerRole)
                 SentinalPlayer.OnPlayerChanged -= OnPlayerRoleChanged;
+
+            SentinalViewRouter.OnSwitch -= OnViewSwitch;
             UnsubscribeFromInputActions();
+        }
+
+        private void OnViewSwitch(ViewSelector previousView, ViewSelector nextView)
+        {
+            if (!requireFreshPress || cancelInputAction == null)
+                return;
+
+            cancelFreshPressGate.Arm(cancelInputAction, requireFreshPress);
         }
 
         private void OnPlayerRoleChanged(int key, PlayerInput newPlayer)
@@ -144,6 +163,8 @@ namespace Sentinal.InputSystem
                 cancelInputAction = cancelAction.FindAction(playerInput);
                 if (cancelInputAction != null)
                 {
+                    cancelFreshPressGate.Arm(cancelInputAction, requireFreshPress);
+
                     if (cancelActionOnRelease)
                         cancelInputAction.canceled += OnCancelCanceled;
                     else
@@ -176,6 +197,8 @@ namespace Sentinal.InputSystem
                 cancelInputAction = null;
             }
 
+            cancelFreshPressGate.Disarm();
+
             if (focusInputAction != null)
             {
                 focusInputAction.performed -= OnFocusPerformed;
@@ -185,9 +208,21 @@ namespace Sentinal.InputSystem
             isSubscribed = false;
         }
 
-        private void OnCancelPerformed(InputAction.CallbackContext context) => RequestCloseCurrentView();
+        private void OnCancelPerformed(InputAction.CallbackContext context)
+        {
+            if (!cancelFreshPressGate.ShouldProcess(cancelInputAction, isCancelEvent: false, requireFreshPress))
+                return;
 
-        private void OnCancelCanceled(InputAction.CallbackContext context) => RequestCloseCurrentView();
+            RequestCloseCurrentView();
+        }
+
+        private void OnCancelCanceled(InputAction.CallbackContext context)
+        {
+            if (!cancelFreshPressGate.ShouldProcess(cancelInputAction, isCancelEvent: true, requireFreshPress))
+                return;
+
+            RequestCloseCurrentView();
+        }
 
         private void RequestCloseCurrentView()
         {
