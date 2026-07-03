@@ -40,7 +40,7 @@ namespace Sentinal.InputSystem.Components
         protected Button button;
         protected InputAction inputAction;
         protected EventSystem eventSystem;
-        protected bool wasPressedOnSubscribe;
+        protected InputFreshPressGate freshPressGate;
 
         protected override void Awake()
         {
@@ -75,7 +75,7 @@ namespace Sentinal.InputSystem.Components
                 return;
             }
 
-            wasPressedOnSubscribe = requireFreshPress && inputAction.IsPressed();
+            freshPressGate.Arm(inputAction, requireFreshPress);
 
             SubscribeToInputAction();
             isSubscribed = true;
@@ -89,7 +89,7 @@ namespace Sentinal.InputSystem.Components
                 inputAction = null;
             }
 
-            wasPressedOnSubscribe = false;
+            freshPressGate.Disarm();
             isSubscribed = false;
         }
 
@@ -97,19 +97,8 @@ namespace Sentinal.InputSystem.Components
         /// Validates whether the current input action event is valid based on fresh press rules.
         /// Returns true if the event should be processed, or false if it should be ignored.
         /// </summary>
-        protected bool ValidateFreshPress(bool isCancelEvent = false)
-        {
-            if (!requireFreshPress || !wasPressedOnSubscribe)
-                return true;
-
-            if (inputAction == null)
-                return false;
-
-            if (!inputAction.IsPressed() || isCancelEvent)
-                wasPressedOnSubscribe = false;
-
-            return false;
-        }
+        protected bool ValidateFreshPress(bool isCancelEvent = false) =>
+            freshPressGate.ShouldProcess(inputAction, isCancelEvent, requireFreshPress);
 
         /// <summary>
         /// Called when subscribing to the input action. Override to subscribe to specific action events.
