@@ -26,6 +26,10 @@ namespace Sentinal.InputSystem.Components
         protected bool sendPointerEvents = true;
 
         [SerializeField]
+        [Tooltip("Selects this button in the EventSystem when its input action triggers it.")]
+        protected bool selectButtonOnInputAction = true;
+
+        [SerializeField]
         [Tooltip(
             "Defers click execution to the next frame to prevent input events carrying over to newly activated views."
         )]
@@ -144,11 +148,8 @@ namespace Sentinal.InputSystem.Components
 
             if (sendPointerEvents && eventSystem != null)
             {
-                ExecuteEvents.Execute(
-                    button.gameObject,
-                    new PointerEventData(eventSystem),
-                    ExecuteEvents.selectHandler
-                );
+                if (selectButtonOnInputAction)
+                    eventSystem.SetSelectedGameObject(button.gameObject);
 
                 // ExecuteEvents.pointerClickHandler will trigger Button's onClick automatically
                 ExecuteEvents.Execute(

@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.1.2] - 2026-08-25
+
+### Added
+
+- **`InputActionButtonBase.selectButtonOnInputAction`** (default: `true`) controls whether an input action selects the button after triggering it.
+
+### Fixed
+
+- **`InputActionButtonBase`** input-triggered clicks now update EventSystem selection, so the previously selected button receives its deselect event and no longer keeps selected visuals.
+
 ## [4.1.1] - 2026-07-03
 
 ### Added
