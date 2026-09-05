@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.0.0] - 2026-09-05
+
+### Added
+
+- **`ActionMapGate` restore timing**: enabling **Restore Previous Action Map State** now shows a **Restore Timing** dropdown. **OnDisable** (default) keeps the previous stack-unwinding behavior; **OnFocusLost** restores as soon as the view loses focus so the next view captures a clean base.
+- **`SelectionNavigator`** provides allocation-free, mask-aware spatial navigation for UGUI controls, including runtime-created controls, ordered preferred targets, per-direction search angles, individually enabled diagonal directions, and opt-in auto-wrapping along sibling lists.
+- **View group editing** now supports persistent append and rename operations, with guarded removal of only the final unused group after scanning prefabs, ScriptableObjects, and scenes.
+- **`ViewAddress` prefab sources** support scene-only, direct-prefab, and optional Addressable-prefab view creation. Use `SentinalViewRouter.OpenViewAsync` for Addressable views.
+- Added focused Edit Mode and Play Mode tests for mask contracts, direction resolution, runtime registration, originating EventSystem selection, and preferred-target order.
+
+### Changed
+
+- Selection moves use the EventSystem associated with the incoming move event's input module instead of `EventSystem.current`, allowing multiple EventSystems to remain isolated.
+- UGUI `Selectable.navigation` is forced to `None` while `SelectionNavigator` owns navigation. Removing the navigator will leave it at `None` (you may change it back).
+- Runtime configuration across routing, input handlers, action maps, tabs, input labels, and prompted text fields is exposed through public properties and mutation methods that apply lifecycle side effects immediately.
+- `ViewGroupConfig.Groups` and other mutable serialized collections are now read-only to callers; use the provided mutation APIs.
+- Router wildcard matching now requires exactly `ViewGroupMask.Everything`. `ViewGroupMask.Nothing` matches nothing.
+- Automatic selection scores every candidate from the source's facing edge to the candidate's center with one uniform measurement, so differently sized or slightly overlapping controls resolve to the adjacent target instead of skipping to a farther one.
+
+### Fixed
+
+- Mixed `ViewGroupMask` XOR operators now perform XOR instead of AND.
+- Direct Input Action references now notify handlers correctly when resolved.
+- `TabbedView` replaces anonymous listeners with removable callbacks when tabs are reconfigured.
+- Scene-view navigation links inside an open prefab stage now search that menu's own buttons instead of unrelated open scenes.
+
+### Migration
+
+- Set existing `ViewAddress` fallback assets to **Direct Prefab**. Their new **Prefab Source** defaults to **None**.
+- `ActionMapGate` can snapshot and restore action-map state per gate via **Restore Previous Action Map State** (defaults to off). Snapshots survive refocusing and restore only when the owning gate is disabled while current, so nested views unwind like a stack.
+- Replace direct writes to Sentinal configuration fields and lists with their public properties or mutation methods.
+
 ## [4.1.2] - 2026-08-25
 
 ### Added

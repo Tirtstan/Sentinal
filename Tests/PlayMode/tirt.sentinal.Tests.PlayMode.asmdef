@@ -1,0 +1,21 @@
+{
+    "name": "tirt.sentinal.Tests.PlayMode",
+    "rootNamespace": "Sentinal.Tests",
+    "references": [
+        "tirt.sentinal",
+        "Unity.ugui",
+        "Unity.InputSystem"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false,
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ]
+}

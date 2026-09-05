@@ -79,11 +79,23 @@ namespace Sentinal.InputSystem
             }
         }
 
-        public ViewSelector ViewSelector => viewSelector;
+        public ViewSelector ViewSelector
+        {
+            get => viewSelector;
+            set => SetViewSelector(value);
+        }
+
+        public PlayerInputSource InputSource => inputSource;
+
+        public int PlayerKey => playerKey;
+
+        public PlayerInput DirectPlayerInput => directPlayerInput;
+
+        public int PlayerInputIndex => playerInputIndex;
 
         private void Awake()
         {
-            ResolvePlayerInput();
+            playerInput = ResolvePlayerInput();
 
             if (inputMode != HandlerInputMode.Always && viewSelector == null)
                 viewSelector = GetComponent<ViewSelector>();
@@ -91,14 +103,10 @@ namespace Sentinal.InputSystem
 
         private void OnEnable()
         {
-            PlayerInput previousPlayerInput = playerInput;
-            ResolvePlayerInput();
+            RefreshResolvedPlayerInput();
 
             if (inputSource == PlayerInputSource.SentinalPlayerRole)
                 SentinalPlayer.OnPlayerChanged += OnPlayerRoleChanged;
-
-            if (previousPlayerInput != playerInput)
-                OnPlayerInputChanged?.Invoke(playerInput);
 
             SentinalViewRouter.OnSwitch += OnViewSwitch;
 
@@ -128,14 +136,24 @@ namespace Sentinal.InputSystem
             }
         }
 
-        private void ResolvePlayerInput()
+        private PlayerInput ResolvePlayerInput()
         {
-            playerInput = inputSource switch
+            return inputSource switch
             {
                 PlayerInputSource.SentinalPlayerRole => SentinalPlayer.GetPlayer(playerKey),
                 PlayerInputSource.PlayerInputIndex => SentinalPlayer.GetPlayerByIndex(playerInputIndex),
                 _ => directPlayerInput,
             };
+        }
+
+        private void RefreshResolvedPlayerInput()
+        {
+            PlayerInput resolvedPlayerInput = ResolvePlayerInput();
+            if (playerInput == resolvedPlayerInput)
+                return;
+
+            playerInput = resolvedPlayerInput;
+            OnPlayerInputChanged?.Invoke(playerInput);
         }
 
         private void OnViewSwitch(ViewSelector previousView, ViewSelector newView)
@@ -213,13 +231,28 @@ namespace Sentinal.InputSystem
         {
             directPlayerInput = input;
             if (inputSource == PlayerInputSource.DirectReference)
-                ResolvePlayerInput();
+                RefreshResolvedPlayerInput();
+        }
 
-            if (playerInput != input)
-            {
-                playerInput = input;
-                OnPlayerInputChanged?.Invoke(playerInput);
-            }
+        public void ConfigurePlayerInputSource(
+            PlayerInputSource source,
+            int roleKey,
+            PlayerInput directInput,
+            int inputIndex
+        )
+        {
+            if (isActiveAndEnabled && inputSource == PlayerInputSource.SentinalPlayerRole)
+                SentinalPlayer.OnPlayerChanged -= OnPlayerRoleChanged;
+
+            inputSource = source;
+            playerKey = roleKey;
+            directPlayerInput = directInput;
+            playerInputIndex = Mathf.Max(0, inputIndex);
+
+            if (isActiveAndEnabled && inputSource == PlayerInputSource.SentinalPlayerRole)
+                SentinalPlayer.OnPlayerChanged += OnPlayerRoleChanged;
+
+            RefreshResolvedPlayerInput();
         }
 
         public override bool IsInputEnabled() => inputEnabled;

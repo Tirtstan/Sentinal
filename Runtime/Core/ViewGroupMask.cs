@@ -59,9 +59,9 @@ namespace Sentinal
         public static ViewGroupMask operator ^(ViewGroupMask left, ViewGroupMask right) =>
             new(left.value ^ right.value);
 
-        public static ViewGroupMask operator ^(ViewGroupMask left, int right) => new(left.value & right);
+        public static ViewGroupMask operator ^(ViewGroupMask left, int right) => new(left.value ^ right);
 
-        public static ViewGroupMask operator ^(int left, ViewGroupMask right) => new(left & right.value);
+        public static ViewGroupMask operator ^(int left, ViewGroupMask right) => new(left ^ right.value);
 
         public static ViewGroupMask operator ~(ViewGroupMask mask) => new(~mask.value);
 

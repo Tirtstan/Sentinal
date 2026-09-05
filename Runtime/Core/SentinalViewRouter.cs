@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading.Tasks;
 using UnityEngine;
 
 namespace Sentinal
@@ -63,7 +64,7 @@ namespace Sentinal
             {
                 if (view != null && view.IsActive)
                 {
-                    if (mask >= 0 && (mask & view.GroupMask) == 0)
+                    if (!MatchesGroupMask(mask, view.GroupMask))
                         continue;
 
                     return true;
@@ -83,7 +84,7 @@ namespace Sentinal
             {
                 if (view != null && view.IsActive && !view.RootView)
                 {
-                    if (mask >= 0 && (mask & view.GroupMask) == 0)
+                    if (!MatchesGroupMask(mask, view.GroupMask))
                         continue;
 
                     return true;
@@ -218,6 +219,12 @@ namespace Sentinal
             }
         }
 
+        internal static void NotifyConfigurationChanged(ViewSelector previousFocusedView)
+        {
+            NotifyFocusChanged(previousFocusedView, selectCurrentView: true);
+            NotifyNonRootViewPresenceChangedIfNeeded();
+        }
+
         /// <summary>
         /// Opens a view by its address. Resolves the address via the registry, instantiating it if necessary, and activates it.
         /// </summary>
@@ -233,6 +240,18 @@ namespace Sentinal
             return view;
         }
 
+        /// <summary>
+        /// Opens a view by address, asynchronously instantiating an Addressable prefab when configured.
+        /// </summary>
+        public static async Task<ViewSelector> OpenViewAsync(ViewAddress address)
+        {
+            ViewSelector view = await ViewAddressRegistry.ResolveAsync(address);
+            if (view != null && !view.gameObject.activeInHierarchy)
+                view.Open();
+
+            return view;
+        }
+
         /// <summary>        /// Closes all views.
         /// </summary>
         /// <param name="excludeRootViews">If true, root views will not be closed.</param>
@@ -241,16 +260,22 @@ namespace Sentinal
         /// <summary>
         /// Closes all views that match the given group mask.
         /// </summary>
-        public static void CloseAllViews(ViewGroupMask? groupMask, bool excludeRootViews = false)
+        public static void CloseAllViews(ViewGroupMask? groupMask, bool excludeRootViews = false) =>
+            CloseAllViews(groupMask, excludeRootViews, null);
+
+        internal static void CloseAllViews(ViewGroupMask? groupMask, bool excludeRootViews, ViewSelector excludeView)
         {
             int mask = groupMask?.Value ?? -1;
             var viewsToClose = new List<ViewSelector>(viewHistory);
             foreach (var view in viewsToClose)
             {
+                if (view == excludeView)
+                    continue;
+
                 if (view.RootView && excludeRootViews)
                     continue;
 
-                if (mask >= 0 && (mask & view.GroupMask) == 0)
+                if (!MatchesGroupMask(mask, view.GroupMask))
                     continue;
 
                 CloseView(view);
@@ -281,7 +306,7 @@ namespace Sentinal
                 if (view == excludeView || !view.gameObject.activeInHierarchy)
                     continue;
 
-                if (mask >= 0 && (mask & view.GroupMask) == 0)
+                if (!MatchesGroupMask(mask, view.GroupMask))
                     continue;
 
                 targets.Add(view);
@@ -451,6 +476,9 @@ namespace Sentinal
 
             return -1;
         }
+
+        private static bool MatchesGroupMask(int filterMask, ViewGroupMask viewMask) =>
+            filterMask == ViewGroupMask.Everything.Value || (filterMask & viewMask.Value) != 0;
 
         public static ViewSelector[] GetViewHistory() => new List<ViewSelector>(viewHistory).ToArray();
 

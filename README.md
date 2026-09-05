@@ -2,133 +2,93 @@
 
 ![Sentinal header](Documentation/Images/Header.png)
 
-Sentinal is a routing and input-control package for Unity UGUI. It gives menus a navigation stack, automatic keyboard and gamepad selection, cancel and back handling, view-layer isolation, and Input System action-map gating.
+Sentinal is a Unity UGUI routing and input-control package. It provides view history, keyboard and gamepad selection, cancel and back handling, view-layer isolation, and Input System action-map gates.
 
-It is intended for projects where controllers matter as much as mouse clicks. Use it for pause menus, settings screens, couch co-op lobbies, tabbed panels, modal prompts, and gameplay HUD overlays that need to share focus safely.
+Selection replaces UGUI's built-in navigation instead of working around it: automatic spatial search with per-direction angles, optional diagonals, ordered preferred targets, and opt-in wrapping. Controls created or enabled at runtime take part with no extra setup.
 
-[Quick start](#quick-start) | [Why Sentinal](#why-sentinal) | [Components](Documentation/Components.md) | [Installation](#installation) | [Samples](#samples)
+Use it for controller-driven pause menus, settings screens, couch co-op lobbies, tabbed panels, modal prompts, and HUD overlays.
+
+[Quick start](#quick-start) | [Why Sentinal](#why-sentinal) | [Components](Documentation/Components.md) | [Installation](#installation) | [Samples & debugging](#samples--debugging)
 
 ---
 
 ## Why Sentinal
 
 ![Sentinal Debug Window](Documentation/Images/SentinalDebugWindow.png)
-_The Sentinal Debug Window at **Window > Sentinal > Debug**. It shows view history, parent GameObjects, priorities, and input gates._
+_The Sentinal Debug Window at **Window > Sentinal > Debug** shows the view stack, priorities, and input gates._
 
-- Mark a menu with `ViewSelector` to route it directly or through a `ViewAddress` ScriptableObject.
-- Sentinal selects an initial control when a view opens and remembers the last selected control. View priority and recency decide which open view receives focus.
-- `ViewDismissalInputHandler` sends cancel or back input to the top non-root view. `Esc`, `B`, and `Circle` can use the same path.
-- `ViewGroupMask` and root views keep HUDs, popups, pause menus, overlays, and tab panels from closing or hiding one another.
-- `ActionMapGate` changes Input System action maps for a focused view. You can target the primary player, all players, or specific `SentinalPlayer` keys. Fresh-press gating prevents the button that opened or closed a view from triggering another control.
-- Views register with the static router, so no manager prefab is required. Sentinal also clears its static state when you use Fast Enter Play Mode.
+- Routable views: add `ViewSelector`, open directly or through a `ViewAddress` asset. Priority and recency resolve overlaps.
+- Selection: `SelectionNavigator` replaces UGUI navigation with spatial search, preferred targets, and opt-in wrap. Runtime controls join automatically.
+- Dismissal: one `ViewDismissalInputHandler` sends Cancel/Back to the top non-root view, so `Esc`, `B`, and `Circle` share a route.
+- Input gates: per-view `ViewInputSystemHandler` and `ActionMapGate` toggle actions by focus. Views register themselves, no manager prefab needed.
 
 ## Quick start
 
-### 1. Make a panel routable
+Build a pause menu. The whole package shows up in this one example, and the hierarchy below is the shape Sentinal expects: one view root, plain buttons under it, one navigator per button.
 
-Add `ViewSelector` to a UGUI panel or screen.
+```
+PauseMenu                         ViewSelector, ViewInputSystemHandler, ActionMapGate
+├── Header                        TextMeshProUGUI ("Paused")
+└── Buttons
+    ├── ResumeButton              Button, SelectionNavigator
+    ├── OptionsButton             Button, SelectionNavigator
+    └── QuitButton                Button, SelectionNavigator
+```
+
+### 1. Lay out the hierarchy
+
+Build the tree above with normal UGUI objects. One view per root, buttons as siblings under a shared parent.
+
+### 2. Make the panel routable
+
+Add `ViewSelector` to `PauseMenu`, set **First Selected** to `ResumeButton`, then `pauseMenu.Open()` / `pauseMenu.Close()`. `Priority` wins overlaps, `Root View` marks screens cancel must never close.
 
 ![ViewSelector inspector](Documentation/Images/ViewSelector.png)
 
-Set these fields:
+### 3. Make the buttons selectable
 
-- **First Selected** to the first button, toggle, or selectable control.
-- **Priority** if this view should take focus over other open views.
-- **Root View** for persistent screens such as HUDs or main menu roots.
+Add `SelectionNavigator` to each button. That is the whole wiring step: it disables UGUI navigation, registers while enabled, and resolves preferred targets first, spatial search second, wrap last. See `Components.md` for angles, diagonals, masks, and wrap rules.
 
-Open or close the screen through its component:
+![SelectionNavigator inspector](Documentation/Images/SelectionNavigator.png)
 
-```csharp
-settingsView.Open();
-settingsView.Close();
-```
+Select a button in the Scene view to verify: solid lines are authored targets, dotted lines are automatic hits, cyan `(wrap)` lines are wraps, the fan is the search cone.
 
-### 2. Open a view without a scene reference
+### 4. Gate input while the menu is focused
 
-Create a `ViewAddress` asset from **Assets > Create > Sentinal > View Address**. Assign it to the view's **Address** field, then route to it from anywhere:
+Add `ViewInputSystemHandler` plus `ActionMapGate` to `PauseMenu`. The handler enables view input only while focused; the gate swaps action maps (e.g. enable `UI`, disable `Gameplay`). Details in `Components.md`.
 
-```csharp
-using Sentinal;
+![ViewInputSystemHandler inspector](Documentation/Images/ViewInput.png)
+![ActionMapGate inspector](Documentation/Images/ActionMapGate.png)
 
-public sealed class AddressOpener
-{
-    public ViewAddress address; // assign SettingsAddress, PauseAddress, etc.
+### 5. Wire back navigation once, globally
 
-    public void Open()
-    {
-        SentinalViewRouter.OpenView(address);
-    }
-}
-```
-
-For button navigation without code, add `ViewLink` to a UGUI `Button` and assign the same address.
-
-### 3. Add back navigation
-
-Add `ViewDismissalInputHandler` to a persistent UI object and assign your cancel action, usually `UI/Cancel`.
+Add `ViewDismissalInputHandler` to a persistent UI object and point it at `UI/Cancel`. One handler covers every menu.
 
 ![ViewDismissal inspector](Documentation/Images/ViewDismissal.png)
 
-When the action fires, Sentinal closes the focused non-root view and restores a valid selection.
-
-### 4. Gate gameplay input while a menu is focused
-
-Add `ActionMapGate` to a view when opening it should change the active Input System action maps.
-
-![ActionMapGate inspector](Documentation/Images/ActionMapGate.png)
-
-For example:
-
-- A pause menu can enable `UI` and disable `Gameplay`.
-- A text prompt can use an exclusive `UI` map.
-- A local multiplayer lobby can target all players or a specific `SentinalPlayer` key.
+For address-based routing (`ViewAddress`, `ViewLink`, prefabs, Addressables), see [Components.md](Documentation/Components.md).
 
 ## Component map
 
-| Area                  | Use these                                                                                                  | What they do                                                                                   |
-| --------------------- | ---------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| Routing               | `SentinalViewRouter`, `ViewSelector`, `ViewAddress`, `ViewLink`                                            | Open, close, focus, and address UGUI views without direct scene references.                    |
-| View layering         | `ViewGroupConfig`, `ViewGroupMask`                                                                         | Separate HUDs, menus, popups, overlays, and tabs by channel.                                   |
-| Input ownership       | `SentinalPlayer`, `ViewInputSystemHandler`, `ActionMapGate`, `ViewDismissalInputHandler`                   | Route UI input to a player and change action maps for the focused view.                       |
-| Input-driven controls | `InputActionButton`, `InputActionButtonHold`, `TabbedView`, `TabbedViewInputHandler`, `DisplayInputString` | Trigger buttons, hold actions, tab changes, and input labels from Input Actions.               |
-| Text prompts          | `TextInputGateway`, `PromptedTextField`                                                                    | Start platform text-entry flows from UGUI buttons.                                             |
+| Area                  | Use these                                                                                                  | What they solve                                      |
+| --------------------- | ---------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| Routing               | `SentinalViewRouter`, `ViewSelector`, `ViewAddress`, `ViewLink`                                            | Open, close, and focus views without scene refs.     |
+| Selection navigation  | `SelectionNavigator`                                                                                       | Controller navigation for dynamic layouts.           |
+| View layering         | `ViewGroupConfig`, `ViewGroupMask`                                                                         | Isolate HUDs, menus, popups, and tabs.               |
+| Input ownership       | `SentinalPlayer`, `ViewInputSystemHandler`, `ActionMapGate`, `ViewDismissalInputHandler`                   | Route input to the right player, gate maps by focus. |
+| Input-driven controls | `InputActionButton`, `InputActionButtonHold`, `TabbedView`, `TabbedViewInputHandler`, `DisplayInputString` | Buttons, holds, tabs, and prompts from actions.      |
+| Text prompts          | `TextInputGateway`, `PromptedTextField`                                                                    | Controller-friendly text entry.                      |
 
-Read the full component guide here: [Components.md](Documentation/Components.md).
+Full guide: [Components.md](Documentation/Components.md).
 
 ## Installation
 
-### Requirements
-
-- Unity `2021.3` or newer.
-- UGUI.
-- Unity Input System for the `Sentinal.InputSystem` assembly and input components.
-- TextMeshPro for text prompt and display helpers.
-
-### Unity Package Manager
-
-1. Open **Window > Package Manager**.
-2. Click **+**.
-3. Choose **Add package from git URL...**.
-4. Paste:
+Requires Unity `2021.3`+, UGUI, Input System (for `Sentinal.InputSystem`), TextMeshPro (for prompts). Add via **Package Manager > + > Add package from git URL**:
 
 ```text
 https://github.com/Tirtstan/Sentinal.git
 ```
 
-## Samples
+## Samples & debugging
 
-Import **Examples** from the Package Manager to try scenes for routing, input-gated menus, action buttons, and tabbed navigation.
-
-Path in package: `Samples/Examples`
-
-## Debugging
-
-Sentinal includes an editor debug window at **Window > Sentinal > Debug**. It shows active views, hidden view history, parent GameObject names, priorities, group masks, and input-gate status. Use it when a view does not close, receive focus, or restore the expected selection.
-
-The static router also exposes:
-
-```csharp
-SentinalViewRouter.CurrentView;
-SentinalViewRouter.GetViewHistory();
-SentinalViewRouter.GetDebugString();
-```
+Import **Examples** from the Package Manager (`Samples/Examples`) for routing, gated menus, action buttons, and tabs. Inspect live views with **Window > Sentinal > Debug**, or `SentinalViewRouter.GetDebugString()`.

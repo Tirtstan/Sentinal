@@ -1,5 +1,8 @@
+using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using UnityEngine;
+using UnityEngine.Serialization;
 #if UNITY_EDITOR
 using UnityEditor;
 using System.IO;
@@ -22,13 +25,20 @@ namespace Sentinal
         public const string DefaultResourcePath = "SentinalViewGroups";
 
         [Header("Groups")]
-        [Tooltip("List of user-defined group names. Duplicates are automatically cleaned up.")]
-        public List<string> Groups = new();
+        [Tooltip("User-defined group names. Default always occupies bit 0.")]
+        [FormerlySerializedAs("Groups")]
+        [SerializeField]
+        private List<string> groups = new();
+
+        [NonSerialized]
+        private ReadOnlyCollection<string> readOnlyGroups;
+
+        public IReadOnlyList<string> Groups => readOnlyGroups ??= groups.AsReadOnly();
 
         /// <summary>
         /// Gets the total number of groups, including the hardcoded "Default" group.
         /// </summary>
-        public int GroupCount => Groups.Count + 1;
+        public int GroupCount => groups.Count + 1;
 
         /// <summary>
         /// Resolves the group name at a specific index, handling "Default" at index 0.
@@ -39,10 +49,80 @@ namespace Sentinal
                 return "Default";
 
             int userIndex = index - 1;
-            if (userIndex < 0 || userIndex >= Groups.Count)
+            if (userIndex < 0 || userIndex >= groups.Count)
                 return null;
 
-            return Groups[userIndex];
+            return groups[userIndex];
+        }
+
+        /// <summary>
+        /// Adds a custom group at the next available bit.
+        /// </summary>
+        public bool TryAddGroup(string groupName, out int groupIndex)
+        {
+            groupIndex = -1;
+            if (!TryNormalizeGroupName(groupName, out string normalizedName))
+                return false;
+
+            if (groups.Count >= 31 || ContainsGroup(normalizedName))
+                return false;
+
+            groups.Add(normalizedName);
+            groupIndex = groups.Count;
+            return true;
+        }
+
+        /// <summary>
+        /// Renames a custom group without changing its assigned bit.
+        /// </summary>
+        public bool RenameGroup(int groupIndex, string groupName)
+        {
+            int userIndex = groupIndex - 1;
+            if (userIndex < 0 || userIndex >= groups.Count)
+                return false;
+
+            if (!TryNormalizeGroupName(groupName, out string normalizedName))
+                return false;
+
+            for (int i = 0; i < groups.Count; i++)
+            {
+                if (i != userIndex && string.Equals(groups[i], normalizedName, StringComparison.OrdinalIgnoreCase))
+                {
+                    return false;
+                }
+            }
+
+            groups[userIndex] = normalizedName;
+            return true;
+        }
+
+#if UNITY_EDITOR
+        public bool RemoveLastGroupInEditor()
+        {
+            if (groups.Count == 0)
+                return false;
+
+            groups.RemoveAt(groups.Count - 1);
+            return true;
+        }
+#endif
+
+        private bool ContainsGroup(string groupName)
+        {
+            for (int i = 0; i < groups.Count; i++)
+            {
+                if (string.Equals(groups[i], groupName, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static bool TryNormalizeGroupName(string groupName, out string normalizedName)
+        {
+            normalizedName = groupName?.Trim();
+            return !string.IsNullOrEmpty(normalizedName)
+                && !string.Equals(normalizedName, "Default", StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>
@@ -121,9 +201,9 @@ namespace Sentinal
             var uniqueGroups = new List<string>();
             bool changed = false;
 
-            for (int i = 0; i < Groups.Count; i++)
+            for (int i = 0; i < groups.Count; i++)
             {
-                string group = Groups[i];
+                string group = groups[i]?.Trim();
                 if (string.IsNullOrWhiteSpace(group))
                 {
                     group = $"Group {uniqueGroups.Count + 1}";
@@ -141,18 +221,34 @@ namespace Sentinal
                     continue;
                 }
 
-                if (uniqueGroups.Contains(group))
+                bool duplicate = false;
+                for (int groupIndex = 0; groupIndex < uniqueGroups.Count; groupIndex++)
+                {
+                    if (string.Equals(uniqueGroups[groupIndex], group, System.StringComparison.OrdinalIgnoreCase))
+                    {
+                        duplicate = true;
+                        break;
+                    }
+                }
+
+                if (duplicate)
                 {
                     changed = true;
                     Debug.LogWarning($"[Sentinal] Removed duplicate group name '{group}' from user groups list.", this);
                     continue;
                 }
 
-                uniqueGroups.Add(group);
+                if (uniqueGroups.Count < 31)
+                    uniqueGroups.Add(group);
+                else
+                    changed = true;
             }
 
-            if (changed || Groups.Count != uniqueGroups.Count)
-                Groups = uniqueGroups;
+            if (changed || groups.Count != uniqueGroups.Count)
+            {
+                groups = uniqueGroups;
+                readOnlyGroups = null;
+            }
 
             var path = AssetDatabase.GetAssetPath(this);
             if (!string.IsNullOrEmpty(path))

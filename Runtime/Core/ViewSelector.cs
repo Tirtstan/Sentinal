@@ -73,28 +73,69 @@ namespace Sentinal
         public GameObject FirstSelected
         {
             get => firstSelected;
-            set => firstSelected = value;
+            set
+            {
+                firstSelected = value;
+                if (IsCurrent() && !rememberLastSelected)
+                    SelectFirstSelected();
+            }
         }
         public GameObject LastSelected => lastSelected;
         public ViewAddress Address
         {
             get => address;
-            set => address = value;
+            set
+            {
+                if (address == value)
+                    return;
+
+                if (isActiveAndEnabled && address != null)
+                    ViewAddressRegistry.Unregister(address, this);
+
+                address = value;
+
+                if (isActiveAndEnabled && address != null)
+                    ViewAddressRegistry.Register(address, this);
+            }
         }
         public int Priority
         {
             get => priority;
-            set => priority = value;
+            set
+            {
+                if (priority == value)
+                    return;
+
+                ViewSelector previousFocusedView = SentinalViewRouter.CurrentView;
+                priority = value;
+                SentinalViewRouter.NotifyConfigurationChanged(previousFocusedView);
+            }
         }
         public bool RootView
         {
             get => rootView;
-            set => rootView = value;
+            set
+            {
+                if (rootView == value)
+                    return;
+
+                ViewSelector previousFocusedView = SentinalViewRouter.CurrentView;
+                rootView = value;
+                SentinalViewRouter.NotifyConfigurationChanged(previousFocusedView);
+            }
         }
         public ViewGroupMask GroupMask
         {
             get => groupMask;
-            set => groupMask = value;
+            set
+            {
+                if (groupMask == value)
+                    return;
+
+                ViewSelector previousFocusedView = SentinalViewRouter.CurrentView;
+                groupMask = value;
+                SentinalViewRouter.NotifyConfigurationChanged(previousFocusedView);
+            }
         }
         public bool ExclusiveView
         {
@@ -109,12 +150,33 @@ namespace Sentinal
         public bool TrackView
         {
             get => trackView;
-            set => trackView = value;
+            set
+            {
+                if (trackView == value)
+                    return;
+
+                trackView = value;
+                if (!isActiveAndEnabled)
+                    return;
+
+                if (trackView)
+                    SentinalViewRouter.Add(this);
+                else
+                    SentinalViewRouter.Remove(this);
+            }
         }
         public bool PreventSelection
         {
             get => preventSelection;
-            set => preventSelection = value;
+            set
+            {
+                if (preventSelection == value)
+                    return;
+
+                preventSelection = value;
+                if (IsCurrent())
+                    Select();
+            }
         }
         public bool RememberLastSelected
         {
@@ -144,7 +206,7 @@ namespace Sentinal
                 ViewAddressRegistry.Register(address, this);
 
             if (exclusiveView)
-                SentinalViewRouter.CloseAllViews(GroupMask);
+                ApplyExclusiveNow();
             else if (hideOtherViews)
                 SentinalViewRouter.HideAllViews(GroupMask, this);
 
@@ -176,7 +238,25 @@ namespace Sentinal
                 SelectFirstSelected();
         }
 
-        public void SetFirstSelected(GameObject firstSelected) => this.firstSelected = firstSelected;
+        public void SetFirstSelected(GameObject firstSelected) => FirstSelected = firstSelected;
+
+        /// <summary>
+        /// Applies the configured exclusive-view behavior immediately.
+        /// </summary>
+        public void ApplyExclusiveNow()
+        {
+            if (isActiveAndEnabled && exclusiveView)
+                SentinalViewRouter.CloseAllViews(GroupMask, excludeRootViews: true, excludeView: this);
+        }
+
+        /// <summary>
+        /// Applies the configured hide-other-views behavior immediately.
+        /// </summary>
+        public void ApplyHideOtherViewsNow()
+        {
+            if (isActiveAndEnabled && hideOtherViews)
+                SentinalViewRouter.HideAllViews(GroupMask, this);
+        }
 
         public void SelectFirstSelected()
         {
@@ -239,7 +319,7 @@ namespace Sentinal
                 SentinalViewRouter.RestoreHiddenViews(this);
 
             if (address != null)
-                ViewAddressRegistry.Unregister(address);
+                ViewAddressRegistry.Unregister(address, this);
         }
 
         /// <summary>
@@ -311,7 +391,7 @@ namespace Sentinal
                 SentinalViewRouter.Remove(this);
 
             if (address != null)
-                ViewAddressRegistry.Unregister(address);
+                ViewAddressRegistry.Unregister(address, this);
 
             SentinalViewRouter.OnSwitch -= OnSwitch;
         }

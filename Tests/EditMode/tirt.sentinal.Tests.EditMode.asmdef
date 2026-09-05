@@ -1,0 +1,23 @@
+{
+    "name": "tirt.sentinal.Tests.EditMode",
+    "rootNamespace": "Sentinal.Tests",
+    "references": [
+        "tirt.sentinal",
+        "tirt.sentinal.InputSystem",
+        "Unity.ugui"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false,
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ]
+}

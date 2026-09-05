@@ -13,9 +13,16 @@ namespace Sentinal.InputSystem.Components
     [RequireComponent(typeof(Button))]
     public class InputActionButton : InputActionButtonBase
     {
+        [Header("Trigger")]
         [SerializeField]
         [Tooltip("The button will be triggered on action release. If false, it will be triggered on action press.")]
         private bool triggerOnRelease;
+
+        public bool TriggerOnRelease
+        {
+            get => triggerOnRelease;
+            set => triggerOnRelease = value;
+        }
 
         protected override void SubscribeToInputAction()
         {

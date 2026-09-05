@@ -1,5 +1,4 @@
 #if ENABLE_INPUT_SYSTEM
-using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -29,6 +28,60 @@ namespace Sentinal.InputSystem.Components
         private bool useCurrentControlScheme = true;
 
         private TextMeshProUGUI text;
+        private bool warnedBindingIndex;
+
+        public InputActionSelector InputActionSelector
+        {
+            get => inputActionSelector;
+            set
+            {
+                inputActionSelector = value;
+                warnedBindingIndex = false;
+                UpdateDisplay();
+            }
+        }
+
+        public int BindingIndex
+        {
+            get => bindingIndex;
+            set
+            {
+                bindingIndex = Mathf.Max(0, value);
+                warnedBindingIndex = false;
+                UpdateDisplay();
+            }
+        }
+
+        public string Prefix
+        {
+            get => prefix;
+            set
+            {
+                prefix = value ?? string.Empty;
+                UpdateDisplay();
+            }
+        }
+
+        public string Suffix
+        {
+            get => suffix;
+            set
+            {
+                suffix = value ?? string.Empty;
+                UpdateDisplay();
+            }
+        }
+
+        public bool UseCurrentControlScheme
+        {
+            get => useCurrentControlScheme;
+            set
+            {
+                useCurrentControlScheme = value;
+                warnedBindingIndex = false;
+                UpdateDisplay();
+            }
+        }
 
         protected override void Awake()
         {
@@ -54,7 +107,7 @@ namespace Sentinal.InputSystem.Components
             UpdateDisplay();
         }
 
-        private void UpdateDisplay()
+        public void UpdateDisplay()
         {
             if (playerInput == null || text == null)
                 return;
@@ -76,30 +129,50 @@ namespace Sentinal.InputSystem.Components
             if (useCurrentControlScheme && playerInput.currentControlScheme != null)
             {
                 var bindings = action.bindings;
-                var matchingBindings = new List<int>();
+                int matchingBinding = -1;
+                int matchingCount = 0;
 
                 for (int i = 0; i < bindings.Count; i++)
                 {
                     if (bindings[i].groups.Contains(playerInput.currentControlScheme))
-                        matchingBindings.Add(i);
+                    {
+                        if (matchingCount == bindingIndex)
+                            matchingBinding = i;
+
+                        matchingCount++;
+                    }
                 }
 
-                if (matchingBindings.Count > 0)
-                {
-                    int targetIndex = Mathf.Clamp(bindingIndex, 0, matchingBindings.Count - 1);
-                    inputString = action.GetBindingDisplayString(matchingBindings[targetIndex]);
-                }
+                if (matchingBinding >= 0)
+                    inputString = action.GetBindingDisplayString(matchingBinding);
                 else
-                {
                     inputString = "N/A";
-                }
+
+                WarnInvalidBindingIndex(action, matchingCount);
             }
             else
             {
-                inputString = action.GetBindingDisplayString(bindingIndex);
+                if (bindingIndex < action.bindings.Count)
+                    inputString = action.GetBindingDisplayString(bindingIndex);
+                else
+                    inputString = "N/A";
+
+                WarnInvalidBindingIndex(action, action.bindings.Count);
             }
 
             text.SetText($"{prefix}{inputString}{suffix}");
+        }
+
+        private void WarnInvalidBindingIndex(InputAction action, int availableBindings)
+        {
+            if (bindingIndex < availableBindings || warnedBindingIndex)
+                return;
+
+            Debug.LogWarning(
+                $"[{nameof(DisplayInputString)}] '{name}' expected binding index 0 to {Mathf.Max(0, availableBindings - 1)} for action '{action.name}', but found {bindingIndex}.",
+                this
+            );
+            warnedBindingIndex = true;
         }
     }
 }

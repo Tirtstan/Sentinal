@@ -17,9 +17,15 @@ namespace Sentinal
 
         private Button button;
 
+        public ViewAddress TargetAddress
+        {
+            get => targetAddress;
+            set => targetAddress = value;
+        }
+
         private void Awake()
         {
-            button = GetComponent<Button>();
+            TryGetComponent(out button);
         }
 
         private void OnEnable()

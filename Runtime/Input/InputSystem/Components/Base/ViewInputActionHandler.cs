@@ -18,7 +18,15 @@ namespace Sentinal.InputSystem.Components
         public InputWhenCurrentMode InputWhenCurrentMode
         {
             get => inputWhenCurrentMode;
-            set => inputWhenCurrentMode = value;
+            set
+            {
+                if (inputWhenCurrentMode == value)
+                    return;
+
+                inputWhenCurrentMode = value;
+                if (isActiveAndEnabled)
+                    UpdateSubscription();
+            }
         }
 
         protected virtual void Start()

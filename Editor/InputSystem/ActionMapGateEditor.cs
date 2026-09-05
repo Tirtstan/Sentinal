@@ -35,6 +35,8 @@ namespace Sentinal.Editor
             var modeProp = serializedObject.FindProperty("mode");
             var actionMapsProp = serializedObject.FindProperty("actionMaps");
             var exclusiveMapNameProp = serializedObject.FindProperty("exclusiveMapName");
+            var restorePreviousActionMapStateProp = serializedObject.FindProperty("restorePreviousActionMapState");
+            var restoreTimingProp = serializedObject.FindProperty("restoreTiming");
 
             EditorGUILayout.PropertyField(targetPlayersProp);
 
@@ -52,6 +54,17 @@ namespace Sentinal.Editor
             else
             {
                 EditorGUILayout.PropertyField(actionMapsProp, true);
+            }
+
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("Restore", EditorStyles.boldLabel);
+            EditorGUILayout.PropertyField(restorePreviousActionMapStateProp);
+
+            if (restorePreviousActionMapStateProp.boolValue)
+            {
+                EditorGUI.indentLevel++;
+                EditorGUILayout.PropertyField(restoreTimingProp);
+                EditorGUI.indentLevel--;
             }
 
             serializedObject.ApplyModifiedProperties();
