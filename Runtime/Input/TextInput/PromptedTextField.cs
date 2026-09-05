@@ -1,6 +1,7 @@
 using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 namespace Sentinal.Input
@@ -34,7 +35,9 @@ namespace Sentinal.Input
         private int maxLength = 128;
 
         [Header("Events")]
-        public UnityEvent<string> OnValueChanged;
+        [SerializeField]
+        [FormerlySerializedAs("OnValueChanged")]
+        private UnityEvent<string> onValueChanged = new();
 
         private Button button;
         private bool isPromptOpen;
@@ -43,6 +46,51 @@ namespace Sentinal.Input
         private int promptClosedFrame = -1;
 
         public bool IsPromptOpen => isPromptOpen;
+
+        public TextMeshProUGUI CaptionText
+        {
+            get => captionText;
+            set
+            {
+                captionText = value;
+                emptyDisplayText = captionText != null ? captionText.text : string.Empty;
+                RefreshLabel();
+            }
+        }
+
+        public TextMeshProUGUI ValueText
+        {
+            get => valueText;
+            set
+            {
+                valueText = value;
+                RefreshLabel();
+            }
+        }
+
+        public string Header
+        {
+            get => header;
+            set => header = value ?? string.Empty;
+        }
+
+        public string Placeholder
+        {
+            get => placeholder;
+            set => placeholder = value ?? string.Empty;
+        }
+
+        public bool Multiline
+        {
+            get => multiline;
+            set => multiline = value;
+        }
+
+        public int MaxLength
+        {
+            get => maxLength;
+            set => maxLength = Mathf.Max(0, value);
+        }
 
         public string Value
         {
@@ -81,13 +129,17 @@ namespace Sentinal.Input
         private void OnValidate() => RefreshLabel();
 
         /// <summary>
-        /// Sets the stored value and updates the label without invoking <see cref="OnValueChanged"/>.
+        /// Sets the stored value and updates the label without notifying listeners.
         /// </summary>
         public void SetValueWithoutNotify(string newValue)
         {
             value = newValue ?? string.Empty;
             RefreshLabel();
         }
+
+        public void AddValueChangedListener(UnityAction<string> listener) => onValueChanged.AddListener(listener);
+
+        public void RemoveValueChangedListener(UnityAction<string> listener) => onValueChanged.RemoveListener(listener);
 
         /// <summary>
         /// Returns the stored value, treating <see cref="emptyDisplayText"/> as empty.
@@ -148,7 +200,7 @@ namespace Sentinal.Input
             RefreshLabel();
 
             if (notify)
-                OnValueChanged?.Invoke(value);
+                onValueChanged.Invoke(value);
         }
 
         private void ApplyConfirmedValue(string confirmed)
@@ -159,7 +211,7 @@ namespace Sentinal.Input
 
             value = normalized;
             RefreshLabel();
-            OnValueChanged?.Invoke(value);
+            onValueChanged.Invoke(value);
         }
 
         private void RefreshLabel()

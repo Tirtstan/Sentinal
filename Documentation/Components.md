@@ -1,8 +1,8 @@
-# Sentinal Component Guide
+# Sentinal component guide
 
 This guide explains the components in Sentinal, what each one owns, and when to use it. Sentinal is split into a small core router and optional Unity Input System helpers.
 
-## Core Concepts
+## Core concepts
 
 - **View**: A UGUI screen, panel, modal, HUD, or tab page with a `ViewSelector`.
 - **Current view**: The focused view chosen by highest priority, then most recent open order.
@@ -10,7 +10,7 @@ This guide explains the components in Sentinal, what each one owns, and when to 
 - **Address**: A `ViewAddress` ScriptableObject used to open a view without a direct scene reference.
 - **Group**: A `ViewGroupMask` channel used to isolate menus, overlays, HUDs, and popups from each other.
 
-## Routing Components
+## Routing components
 
 ### `SentinalViewRouter`
 
@@ -118,7 +118,41 @@ Use separate groups for surfaces with different lifecycles:
 
 `ViewGroupMask` supports bitwise-style group checks and exposes `Everything` / `Nothing` presets.
 
-## Input System Components
+### `SelectionNavigator`
+
+**Add to GameObject:** alongside any UGUI `Selectable`
+
+`SelectionNavigator` handles mask-aware spatial selection instead of UGUI Automatic navigation. It registers while enabled, so controls created or enabled at runtime take part immediately.
+
+![SelectionNavigator inspector](Images/SelectionNavigator.png)
+
+The component disables the attached `Selectable`'s built-in navigation. Leave UGUI navigation alone after that. Cardinal directions are enabled by default and diagonals stay off until you turn them on.
+
+Each move resolves in a fixed order:
+
+1. The first valid preferred target, in authored order.
+2. Automatic spatial search.
+3. Wrap, if enabled for that direction. Otherwise selection stays put.
+
+Use **Navigation Mask** to keep unrelated controls apart. Masks share the project `ViewGroupConfig` with views, but a navigator's mask is independent from a `ViewSelector` on the same object. `Nothing` matches no candidates. `Everything` matches every group.
+
+Automatic search measures from the source `RectTransform`'s facing edge to each candidate's center, using the direction's search angle, distance, and target priority. Each enabled direction can override the default search angle for layouts that need a wider or narrower cone; an angle of 0 disables automatic search so only preferred targets apply. Diagonal input requires the configurable threshold; when that diagonal is disabled, input falls back to an enabled cardinal axis.
+
+#### The Directions grid
+
+One cell per direction: the toggle allows it, the `↺ Wrap` strip jumps to the opposite end of the sibling list when nothing else is found. The strip stays disabled until its direction is allowed.
+
+Wrap needs a list, not a grid. It looks at siblings under the same parent and only applies along the list's long axis, so a vertical button stack wraps up and down, a horizontal row wraps left and right, and a 2D grid does not wrap. Wrap is off by default. Preferred targets and automatic hits always win over it, and masks and interactability still filter candidates.
+
+Worked example for a pause menu: enable wrap Up and Down on the buttons stacked under `Buttons`, and wrap Left and Right on the bottom Menu/Lobby/Exit row. Down past the last button jumps to the first, Left past Menu jumps to Exit, and nothing else changes.
+
+#### Reading the Scene gizmos
+
+Select a button. Solid lines are authored preferred targets. Dotted lines in the direction color are automatic targets. Dotted cyan lines tagged `(wrap)` are wrap targets, drawn only when wrap would actually fire. The fan is the search cone. All of this works in edit mode, including open prefab stages.
+
+If a line points somewhere stupid, the layout is usually the problem: overlapping rects, a rotated container widening screen bounds, or a cone too wide for a dense row. Narrow the search angle or fix the spacing before hand-wiring preferred targets around it.
+
+## Input System components
 
 These components compile when Unity's Input System is enabled.
 
@@ -178,6 +212,19 @@ Common examples:
 - Modal prompt: exclusive `UI`.
 - Lobby screen: apply to all joined players.
 
+**Restore Previous Action Map State** is off by default and usually stays off. Each view applies its own rules on focus, and project code owns the trip back (enable `Gameplay` when no gated view is current). Turn restore on for a view that must put the maps back exactly as it found them when it closes.
+
+A gate with restore enabled captures each target player's map state the first time it applies. Late-joining players get captured on first sighting. A background gate dropping out clears its snapshot without touching the live maps.
+
+Restore timing (shown while restore is enabled):
+
+| Timing          | Behavior                                                                                                                                                          |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **OnDisable**   | Holds the snapshot across refocusing and restores only when the owning gate is disabled while its view is current. Nested restore gates unwind like a stack, innermost first. Use for modals over menus. |
+| **OnFocusLost** | Restores as soon as the view loses focus, so the next view captures a clean base instead of this gate's applied state. Use for sibling views that each clean up after themselves. |
+
+Pick one strategy per player scope. Mixing `OnDisable` and `OnFocusLost` gates over the same players can clobber snapshots: the losing gate must restore before the gaining gate captures, which follows enable order, so enable background views before the modals that cover them.
+
 ### `ViewDismissalInputHandler`
 
 **Scope:** canvas/global cancel listener  
@@ -196,7 +243,7 @@ Use it for:
 
 Group filtering lets different canvases or players close only the views they own.
 
-## Input-Driven UI Components
+## Input-driven UI components
 
 ### `InputActionButton`
 
@@ -243,9 +290,9 @@ Use it for shoulder-button, bumper, trigger, or keyboard tab cycling.
 
 `DisplayInputString` renders the display string for an Input Action binding. It can use the current `PlayerInput` control scheme so the label changes when the active device changes.
 
-Use it for lightweight button prompts such as `[Submit]`, `[Cancel]`, or `[Next Tab]`.
+Use it for button prompts such as `[Submit]`, `[Cancel]`, or `[Next Tab]`.
 
-## Text Input Components
+## Text input components
 
 ### `TextInputGateway`
 
@@ -274,35 +321,74 @@ Important fields:
 | **Max Length**         | Maximum accepted character count.                 |
 | **Empty Display Text** | Label shown and stored when the value is empty.   |
 
-## Recommended Setups
+## Recommended setups
 
 ### Simple menu screen
 
-- `ViewSelector`
-- `ViewLink` on destination buttons
-- `ViewDismissalInputHandler` on the canvas
+```
+Menu                              ViewSelector
+├── Title                         TextMeshProUGUI
+└── Buttons
+    ├── PlayButton                Button, SelectionNavigator, ViewLink
+    ├── SettingsButton            Button, SelectionNavigator, ViewLink
+    └── ExitButton                Button, SelectionNavigator, ViewLink
+```
+
+`ViewSelector`, `ViewLink` on destination buttons, `ViewDismissalInputHandler` on the canvas.
 
 ### Pause menu over gameplay
 
-- HUD `ViewSelector` marked as **Root View**
-- Pause menu `ViewSelector` in a `PauseMenu` group
-- Pause menu `ActionMapGate`
-- Global `ViewDismissalInputHandler`
+```
+GameplayHud                       ViewSelector (Root View)
+PauseMenu                         ViewSelector, ViewInputSystemHandler, ActionMapGate
+├── Header                        TextMeshProUGUI
+└── Buttons
+    ├── ResumeButton              Button, SelectionNavigator
+    ├── OptionsButton             Button, SelectionNavigator
+    └── QuitButton                Button, SelectionNavigator
+```
+
+HUD `ViewSelector` marked as **Root View**, pause menu `ViewSelector` in a `PauseMenu` group, pause menu `ActionMapGate`, global `ViewDismissalInputHandler`. Enable wrap Up/Down on the `Buttons` stack so Down past Quit jumps back to Resume.
 
 ### Couch co-op lobby
 
-- Register each `PlayerInput` through `SentinalPlayer`
-- Lobby root `ViewSelector`
-- Per-player views using `ActionMapGate` with **Specific Key** when needed
-- `InputActionButton` for ready/confirm actions
-- `DisplayInputString` for current-device prompts
+```
+Lobby                             ViewSelector (Root View)
+├── PlayerCards
+│   ├── CardP1                    ViewSelector, ActionMapGate (Specific Key 0)
+│   └── CardP2                    ViewSelector, ActionMapGate (Specific Key 1)
+└── Footer
+    ├── ReadyButton               Button, SelectionNavigator, InputActionButton
+    └── StartButton               Button, SelectionNavigator, InputActionButton
+```
+
+Register each `PlayerInput` through `SentinalPlayer`, lobby root `ViewSelector`, per-player views using `ActionMapGate` with **Specific Key** when needed, `InputActionButton` for ready/confirm actions, `DisplayInputString` for current-device prompts.
 
 ### Tabbed settings panel
 
-- Parent `TabbedView`
-- One `Toggle` per tab
-- One `ViewSelector` panel per tab
-- `TabbedViewInputHandler` for bumper/trigger navigation
+```
+Settings                          ViewSelector
+├── TabBar                        TabbedView, TabbedViewInputHandler
+│   ├── AudioTab                  Toggle
+│   └── VideoTab                  Toggle
+├── AudioPanel                    ViewSelector (Track View off)
+└── VideoPanel                    ViewSelector (Track View off)
+```
+
+Parent `TabbedView`, one `Toggle` per tab, one `ViewSelector` panel per tab, `TabbedViewInputHandler` for bumper/trigger navigation.
+
+## Coming from BNav
+
+| BNav                              | Sentinal                                                     | What changed                                                  |
+| --------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------- |
+| `belongGroup` string              | Navigation Mask + `ViewGroupConfig`                          | Bitmask instead of strings, no Resources lookup in the hot path |
+| `searchRangeUp` etc. (0 to 1)     | Search angle in degrees per direction (default 60)           | 0 disables automatic search                                   |
+| `fallbackNavigations` lists       | Preferred targets plus wrap directions                       | Order flipped: preferred targets win *before* automatic search |
+| `ignoreTop` etc. (AutoSync)       | Facing-edge-to-center measurement                            | No manual margins to tune                                     |
+| `enableUp` booleans               | Allowed Directions grid                                      | Adds individually enabled diagonals                           |
+| `priority`                        | Priority                                                     | Tie-break only, with a near-tie tolerance                     |
+| `debugFollowNavigation`           | Scene gizmos plus the Debug window                           | Works in edit mode, including prefab stages                   |
+| `Selectable.Select()`             | Selection through the event's EventSystem                    | Safe with several EventSystems (split-screen, couch co-op)    |
 
 ## Troubleshooting
 
@@ -314,3 +400,6 @@ Important fields:
 | A view cannot be opened by address     | Confirm the `ViewAddress` asset is assigned to the `ViewSelector`, and that the view is registered or has a resolvable fallback. |
 | Gameplay input still fires under menus | Add `ActionMapGate` to the focused menu and verify the target player selection.                                                  |
 | Prompts do not open                    | Register a `TextInputGateway` presenter before using `PromptedTextField`.                                                        |
+| Navigation jumps to an unexpected target | Select the source button and read the dotted gizmo link. Overlapping rects (check rotated containers), a too-wide search angle, or a shared mask with a distant control are the usual causes. |
+| Wrap never fires                       | Wrap needs sibling buttons under one parent, a list rather than a grid along that axis, and the wrap flag on for the direction. Grids and lone buttons never wrap. |
+| Maps stay wrong after a menu closes    | Only the focused view's gate applies rules. Give the closing menu's replacement its own gate, or let project code re-enable gameplay maps when no gated view is current. |

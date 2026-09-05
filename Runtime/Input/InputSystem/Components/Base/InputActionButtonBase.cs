@@ -18,7 +18,7 @@ namespace Sentinal.InputSystem.Components
         [Header("Action")]
         [SerializeField]
         [Tooltip("Input action to trigger the button (e.g., 'Submit').")]
-        protected InputActionSelector actionSelector = new() { useActionName = true, actionName = "Submit" };
+        protected InputActionSelector actionSelector = new("Submit");
 
         [Header("Configs")]
         [SerializeField]
@@ -45,6 +45,57 @@ namespace Sentinal.InputSystem.Components
         protected InputAction inputAction;
         protected EventSystem eventSystem;
         protected InputFreshPressGate freshPressGate;
+
+        public InputActionSelector ActionSelector
+        {
+            get => actionSelector;
+            set
+            {
+                if (ReferenceEquals(actionSelector, value))
+                    return;
+
+                bool wasSubscribed = isSubscribed;
+                if (wasSubscribed)
+                    Unsubscribe();
+
+                actionSelector = value;
+
+                if (wasSubscribed)
+                    UpdateSubscription();
+            }
+        }
+
+        public bool SendPointerEvents
+        {
+            get => sendPointerEvents;
+            set => sendPointerEvents = value;
+        }
+
+        public bool SelectButtonOnInputAction
+        {
+            get => selectButtonOnInputAction;
+            set => selectButtonOnInputAction = value;
+        }
+
+        public bool DeferExecution
+        {
+            get => deferExecution;
+            set => deferExecution = value;
+        }
+
+        public bool RequireFreshPress
+        {
+            get => requireFreshPress;
+            set
+            {
+                if (requireFreshPress == value)
+                    return;
+
+                requireFreshPress = value;
+                if (isSubscribed && inputAction != null)
+                    freshPressGate.Arm(inputAction, requireFreshPress);
+            }
+        }
 
         protected override void Awake()
         {
@@ -163,29 +214,6 @@ namespace Sentinal.InputSystem.Components
                 // When not sending pointer events, directly invoke onClick
                 button.onClick?.Invoke();
             }
-        }
-
-        /// <summary>
-        /// Gets the current action selector. Useful for programmatic configuration.
-        /// </summary>
-        public InputActionSelector GetActionSelector() => actionSelector;
-
-        /// <summary>
-        /// Sets the action selector. Useful for programmatic configuration.
-        /// </summary>
-        public void SetActionSelector(InputActionSelector selector)
-        {
-            if (actionSelector == selector)
-                return;
-
-            bool wasSubscribed = isSubscribed;
-            if (wasSubscribed)
-                Unsubscribe();
-
-            actionSelector = selector;
-
-            if (wasSubscribed)
-                UpdateSubscription();
         }
     }
 }

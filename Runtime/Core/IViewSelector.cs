@@ -29,7 +29,7 @@ namespace Sentinal
 
         /// <summary>
         /// The group mask for this view. Views with overlapping group masks share groups.
-        /// A mask of 0 means no groups are assigned (affects all views for backward compatibility).
+        /// A mask of 0 means no groups are assigned and matches no views.
         /// </summary>
         public ViewGroupMask GroupMask { get; }
 

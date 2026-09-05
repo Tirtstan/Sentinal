@@ -10,11 +10,18 @@ namespace Sentinal.InputSystem
     [Serializable]
     public class ActionMapConfig
     {
+        [Header("Action Map")]
+        [SerializeField]
         [Tooltip("The name of the action map.")]
-        public string actionMapName;
+        private string actionMapName;
 
+        [SerializeField]
         [Tooltip("How this action map should be applied when the gate is active.")]
-        public InputWhenCurrentMode applyMode = InputWhenCurrentMode.Inherit;
+        private InputWhenCurrentMode applyMode = InputWhenCurrentMode.Inherit;
+
+        public string ActionMapName => actionMapName;
+
+        public InputWhenCurrentMode ApplyMode => applyMode;
 
         public ActionMapConfig(
             string actionMapName,

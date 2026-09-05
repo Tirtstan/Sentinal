@@ -16,9 +16,34 @@ namespace Sentinal.InputSystem.Components
         [Tooltip(
             "Input action for switching tabs (e.g., 'Navigate' or 'TabSwitch'). Ideally a Value type with Axis Control."
         )]
-        private InputActionSelector switchTabActionSelector = new() { useActionName = true, actionName = "TabSwitch" };
+        private InputActionSelector switchTabActionSelector = new("TabSwitch");
 
         private InputAction switchTabAction;
+
+        public TabbedView TabbedView
+        {
+            get => tabbedView;
+            set => tabbedView = value;
+        }
+
+        public InputActionSelector SwitchTabAction
+        {
+            get => switchTabActionSelector;
+            set
+            {
+                if (ReferenceEquals(switchTabActionSelector, value))
+                    return;
+
+                bool resubscribe = isSubscribed;
+                if (resubscribe)
+                    Unsubscribe();
+
+                switchTabActionSelector = value;
+
+                if (resubscribe)
+                    UpdateSubscription();
+            }
+        }
 
         protected override void Reset()
         {

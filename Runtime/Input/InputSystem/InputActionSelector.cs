@@ -1,7 +1,7 @@
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine;
-using UnityEngine.InputSystem;
 using System;
+using UnityEngine.InputSystem;
 
 namespace Sentinal.InputSystem
 {
@@ -13,16 +13,40 @@ namespace Sentinal.InputSystem
     [Serializable]
     public class InputActionSelector
     {
+        [Header("Selection")]
+        [SerializeField]
         [Tooltip("If true, uses the action name. If false, uses the action reference.")]
-        public bool useActionName = true;
+        private bool useActionName = true;
 
+        [SerializeField]
         [Tooltip(
             "Action name to find across all action maps (e.g., 'Submit', 'Cancel'). Used when useActionName is true."
         )]
-        public string actionName = "Submit";
+        private string actionName = "Submit";
 
+        [SerializeField]
         [Tooltip("Direct reference to a specific action. Used when useActionName is false.")]
-        public InputActionReference actionReference;
+        private InputActionReference actionReference;
+
+        public bool UseActionName => useActionName;
+
+        public string ActionName => actionName;
+
+        public InputActionReference ActionReference => actionReference;
+
+        public InputActionSelector() { }
+
+        public InputActionSelector(string actionName)
+        {
+            useActionName = true;
+            this.actionName = actionName;
+        }
+
+        public InputActionSelector(InputActionReference actionReference)
+        {
+            useActionName = false;
+            this.actionReference = actionReference;
+        }
 
         /// <summary>
         /// Finds the InputAction from the given PlayerInput based on the selector settings.

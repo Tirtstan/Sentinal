@@ -28,11 +28,11 @@ namespace Sentinal.InputSystem
         [Header("Actions")]
         [SerializeField]
         [Tooltip("Action to close the current menu (e.g., 'Cancel').")]
-        private InputActionSelector cancelAction = new() { useActionName = true, actionName = "UI/Cancel" };
+        private InputActionSelector cancelAction = new("UI/Cancel");
 
         [SerializeField]
         [Tooltip("Action to refocus the last selected element (e.g., 'Focus').")]
-        private InputActionSelector focusAction = new() { useActionName = true, actionName = "UI/Focus" };
+        private InputActionSelector focusAction = new("UI/Focus");
 
         [SerializeField]
         [Tooltip("Fire on action release (canceled) instead of action press (performed).")]
@@ -55,6 +55,56 @@ namespace Sentinal.InputSystem
             set => groupMask = value;
         }
 
+        public PlayerInputSource InputSource => inputSource;
+
+        public int PlayerKey => playerKey;
+
+        public PlayerInput DirectPlayerInput => directPlayerInput;
+
+        public int PlayerInputIndex => playerInputIndex;
+
+        public InputActionSelector CancelAction
+        {
+            get => cancelAction;
+            set => ReplaceActions(value, focusAction);
+        }
+
+        public InputActionSelector FocusAction
+        {
+            get => focusAction;
+            set => ReplaceActions(cancelAction, value);
+        }
+
+        public bool CancelActionOnRelease
+        {
+            get => cancelActionOnRelease;
+            set
+            {
+                if (cancelActionOnRelease == value)
+                    return;
+
+                bool resubscribe = isSubscribed;
+                if (resubscribe)
+                    UnsubscribeFromInputActions();
+
+                cancelActionOnRelease = value;
+
+                if (resubscribe)
+                    SubscribeToInputActions();
+            }
+        }
+
+        public bool RequireFreshPress
+        {
+            get => requireFreshPress;
+            set
+            {
+                requireFreshPress = value;
+                if (cancelInputAction != null)
+                    cancelFreshPressGate.Arm(cancelInputAction, requireFreshPress);
+            }
+        }
+
         private PlayerInput playerInput;
         private InputAction cancelInputAction;
         private InputAction focusInputAction;
@@ -65,7 +115,7 @@ namespace Sentinal.InputSystem
 
         private void Awake()
         {
-            ResolvePlayerInput();
+            playerInput = ResolvePlayerInput();
 
             if (playerInput != null)
                 SubscribeToInputActions();
@@ -111,9 +161,9 @@ namespace Sentinal.InputSystem
                 SubscribeToInputActions();
         }
 
-        private void ResolvePlayerInput()
+        private PlayerInput ResolvePlayerInput()
         {
-            playerInput = inputSource switch
+            return inputSource switch
             {
                 PlayerInputSource.SentinalPlayerRole => SentinalPlayer.GetPlayer(playerKey),
                 PlayerInputSource.PlayerInputIndex => SentinalPlayer.GetPlayerByIndex(playerInputIndex),
@@ -128,16 +178,53 @@ namespace Sentinal.InputSystem
         {
             directPlayerInput = input;
             if (inputSource == PlayerInputSource.DirectReference)
-                ResolvePlayerInput();
+                SetResolvedPlayerInput(ResolvePlayerInput());
+        }
 
-            if (playerInput != input)
-            {
+        public void ConfigurePlayerInputSource(
+            PlayerInputSource source,
+            int roleKey,
+            PlayerInput directInput,
+            int inputIndex
+        )
+        {
+            if (isActiveAndEnabled && inputSource == PlayerInputSource.SentinalPlayerRole)
+                SentinalPlayer.OnPlayerChanged -= OnPlayerRoleChanged;
+
+            inputSource = source;
+            playerKey = roleKey;
+            directPlayerInput = directInput;
+            playerInputIndex = Mathf.Max(0, inputIndex);
+
+            if (isActiveAndEnabled && inputSource == PlayerInputSource.SentinalPlayerRole)
+                SentinalPlayer.OnPlayerChanged += OnPlayerRoleChanged;
+
+            SetResolvedPlayerInput(ResolvePlayerInput());
+        }
+
+        public void ReplaceActions(InputActionSelector cancelSelector, InputActionSelector focusSelector)
+        {
+            bool resubscribe = isSubscribed;
+            if (resubscribe)
                 UnsubscribeFromInputActions();
-                playerInput = input;
 
-                if (playerInput != null)
-                    SubscribeToInputActions();
-            }
+            cancelAction = cancelSelector;
+            focusAction = focusSelector;
+
+            if (resubscribe)
+                SubscribeToInputActions();
+        }
+
+        private void SetResolvedPlayerInput(PlayerInput resolvedPlayerInput)
+        {
+            if (playerInput == resolvedPlayerInput)
+                return;
+
+            UnsubscribeFromInputActions();
+            playerInput = resolvedPlayerInput;
+
+            if (isActiveAndEnabled && playerInput != null)
+                SubscribeToInputActions();
         }
 
         /// <summary>
@@ -233,7 +320,10 @@ namespace Sentinal.InputSystem
             if (pendingCloseView == null || pendingCloseView.RootView)
                 return;
 
-            if (groupMask.Value >= 0 && (groupMask.Value & pendingCloseView.GroupMask) == 0)
+            if (
+                groupMask != ViewGroupMask.Everything
+                && (groupMask & pendingCloseView.GroupMask) == ViewGroupMask.Nothing
+            )
                 return;
 
             closeRequestedThisFrame = true;

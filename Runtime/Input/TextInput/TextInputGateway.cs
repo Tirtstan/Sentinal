@@ -4,8 +4,7 @@ using UnityEngine;
 namespace Sentinal.Input
 {
     /// <summary>
-    /// Global access point for modal text entry. A persistent presenter (for example on PersistentCanvas)
-    /// registers itself at startup.
+    /// Global access point for modal text entry. A persistent presenter registers itself at startup.
     /// </summary>
     public static class TextInputGateway
     {
