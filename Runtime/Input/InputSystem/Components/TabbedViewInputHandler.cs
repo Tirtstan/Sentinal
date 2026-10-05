@@ -18,12 +18,51 @@ namespace Sentinal.InputSystem.Components
         )]
         private InputActionSelector switchTabActionSelector = new("TabSwitch");
 
+        [SerializeField]
+        [Tooltip("Whether tab switching wraps around from the last tab to the first and vice versa.")]
+        private bool wrapTabs = true;
+
+        [SerializeField]
+        [Tooltip(
+            "Keep tab-switch input enabled while this handler's view or one of the Tabbed View's panels is focused. Other views suspend it."
+        )]
+        private bool includeTabPanelsInFocus;
+
         private InputAction switchTabAction;
 
         public TabbedView TabbedView
         {
             get => tabbedView;
-            set => tabbedView = value;
+            set
+            {
+                if (tabbedView == value)
+                    return;
+
+                if (isActiveAndEnabled && tabbedView != null)
+                    tabbedView.TabsChanged -= OnTabsChanged;
+
+                tabbedView = value;
+
+                if (isActiveAndEnabled && tabbedView != null)
+                    tabbedView.TabsChanged += OnTabsChanged;
+
+                if (isActiveAndEnabled)
+                    UpdateSubscription();
+            }
+        }
+
+        public bool IncludeTabPanelsInFocus
+        {
+            get => includeTabPanelsInFocus;
+            set
+            {
+                if (includeTabPanelsInFocus == value)
+                    return;
+
+                includeTabPanelsInFocus = value;
+                if (isActiveAndEnabled)
+                    UpdateSubscription();
+            }
         }
 
         public InputActionSelector SwitchTabAction
@@ -43,6 +82,12 @@ namespace Sentinal.InputSystem.Components
                 if (resubscribe)
                     UpdateSubscription();
             }
+        }
+
+        public bool WrapTabs
+        {
+            get => wrapTabs;
+            set => wrapTabs = value;
         }
 
         protected override void Reset()
@@ -68,6 +113,52 @@ namespace Sentinal.InputSystem.Components
                 }
             }
         }
+
+        protected override void OnEnable()
+        {
+            base.OnEnable();
+            SentinalViewRouter.OnSwitch += OnViewSwitch;
+            if (tabbedView != null)
+                tabbedView.TabsChanged += OnTabsChanged;
+            UpdateSubscription();
+        }
+
+        protected override void OnDisable()
+        {
+            SentinalViewRouter.OnSwitch -= OnViewSwitch;
+            if (tabbedView != null)
+                tabbedView.TabsChanged -= OnTabsChanged;
+            base.OnDisable();
+        }
+
+        public override bool ShouldSubscribe()
+        {
+            if (!includeTabPanelsInFocus || InputWhenCurrentMode != InputWhenCurrentMode.Inherit)
+                return base.ShouldSubscribe();
+
+            if (viewInputHandler == null || !viewInputHandler.isActiveAndEnabled || tabbedView == null)
+                return false;
+
+            ViewSelector currentView = SentinalViewRouter.CurrentView;
+            if (currentView == null)
+                return false;
+
+            if (currentView == viewInputHandler.ViewSelector)
+                return true;
+
+            var panels = tabbedView.GroupPanels;
+            for (int i = 0; i < panels.Count; i++)
+            {
+                if (currentView == panels[i])
+                    return true;
+            }
+
+            return false;
+        }
+
+        private void OnViewSwitch(ViewSelector _, ViewSelector __) => UpdateSubscription();
+
+        private void OnTabsChanged() => UpdateSubscription();
 
         protected override void Subscribe()
         {
@@ -114,11 +205,11 @@ namespace Sentinal.InputSystem.Components
 
             if (input > 0)
             {
-                tabbedView.Next();
+                tabbedView.Next(wrapTabs);
             }
             else if (input < 0)
             {
-                tabbedView.Previous();
+                tabbedView.Previous(wrapTabs);
             }
         }
     }

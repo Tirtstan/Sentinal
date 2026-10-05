@@ -22,15 +22,13 @@ namespace Sentinal.InputSystem.Components
         [Tooltip("The index of the tab to set as active by default.")]
         private int defaultTabIndex;
 
-        [SerializeField]
-        [Tooltip("Whether tab switching wraps around from last to first tab and vice versa.")]
-        private bool wrapTabs = true;
-
         private int currentTabIndex;
         private ToggleGroup toggleGroup;
         private UnityAction<bool>[] toggleListeners = Array.Empty<UnityAction<bool>>();
         private ReadOnlyCollection<Toggle> readOnlyToggles;
         private ReadOnlyCollection<ViewSelector> readOnlyPanels;
+
+        public event Action TabsChanged;
 
         public IReadOnlyList<Toggle> GroupToggles => readOnlyToggles ??= Array.AsReadOnly(groupToggles);
 
@@ -42,12 +40,6 @@ namespace Sentinal.InputSystem.Components
         {
             get => defaultTabIndex;
             set => defaultTabIndex = Mathf.Max(0, value);
-        }
-
-        public bool WrapTabs
-        {
-            get => wrapTabs;
-            set => wrapTabs = value;
         }
 
         private void Awake()
@@ -78,32 +70,34 @@ namespace Sentinal.InputSystem.Components
             {
                 currentTabIndex = 0;
                 SetPanelsActive(-1);
+                TabsChanged?.Invoke();
                 return;
             }
 
             SelectTab(Mathf.Clamp(currentTabIndex, 0, groupToggles.Length - 1));
+            TabsChanged?.Invoke();
         }
 
-        public void Next()
+        public void Next(bool wrap)
         {
             if (groupToggles.Length == 0)
                 return;
 
             int nextIndex = currentTabIndex + 1;
             if (nextIndex >= groupToggles.Length)
-                nextIndex = wrapTabs ? 0 : groupToggles.Length - 1;
+                nextIndex = wrap ? 0 : groupToggles.Length - 1;
 
             SelectTab(nextIndex);
         }
 
-        public void Previous()
+        public void Previous(bool wrap)
         {
             if (groupToggles.Length == 0)
                 return;
 
             int previousIndex = currentTabIndex - 1;
             if (previousIndex < 0)
-                previousIndex = wrapTabs ? groupToggles.Length - 1 : 0;
+                previousIndex = wrap ? groupToggles.Length - 1 : 0;
 
             SelectTab(previousIndex);
         }
@@ -172,9 +166,12 @@ namespace Sentinal.InputSystem.Components
         {
             for (int i = 0; i < groupPanels.Length; i++)
             {
-                if (groupPanels[i] != null)
-                    groupPanels[i].gameObject.SetActive(i == activeIndex);
+                if (i != activeIndex && groupPanels[i] != null)
+                    groupPanels[i].gameObject.SetActive(false);
             }
+
+            if (activeIndex >= 0 && activeIndex < groupPanels.Length && groupPanels[activeIndex] != null)
+                groupPanels[activeIndex].gameObject.SetActive(true);
         }
 
         private static T[] Copy<T>(IReadOnlyList<T> source)

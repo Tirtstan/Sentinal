@@ -48,5 +48,35 @@ namespace Sentinal.Tests
             Assert.That(secondToggle.isOn, Is.True);
             Assert.That(didNotifySecondToggle, Is.True);
         }
+
+        [TestCase(true, 0)]
+        [TestCase(false, 1)]
+        public void NextUsesCallerWrapPolicy(bool wrap, int expectedIndex)
+        {
+            TabbedView tabbedView = tabbedViewObject.GetComponent<TabbedView>();
+            Toggle firstToggle = firstToggleObject.GetComponent<Toggle>();
+            Toggle secondToggle = secondToggleObject.GetComponent<Toggle>();
+            tabbedView.ReplaceTabs(new[] { firstToggle, secondToggle }, System.Array.Empty<ViewSelector>());
+            tabbedView.SelectTab(1);
+
+            tabbedView.Next(wrap);
+
+            Assert.That(tabbedView.CurrentTabIndex, Is.EqualTo(expectedIndex));
+        }
+
+        [TestCase(true, 1)]
+        [TestCase(false, 0)]
+        public void PreviousUsesCallerWrapPolicy(bool wrap, int expectedIndex)
+        {
+            TabbedView tabbedView = tabbedViewObject.GetComponent<TabbedView>();
+            Toggle firstToggle = firstToggleObject.GetComponent<Toggle>();
+            Toggle secondToggle = secondToggleObject.GetComponent<Toggle>();
+            tabbedView.ReplaceTabs(new[] { firstToggle, secondToggle }, System.Array.Empty<ViewSelector>());
+            tabbedView.SelectTab(0);
+
+            tabbedView.Previous(wrap);
+
+            Assert.That(tabbedView.CurrentTabIndex, Is.EqualTo(expectedIndex));
+        }
     }
 }

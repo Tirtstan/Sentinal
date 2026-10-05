@@ -87,7 +87,7 @@ namespace Sentinal.InputSystem.Components
 
         private void OnInputChangedHandler(bool isEnabled) => UpdateSubscription();
 
-        public bool ShouldSubscribe() =>
+        public virtual bool ShouldSubscribe() =>
             inputWhenCurrentMode switch
             {
                 InputWhenCurrentMode.Inherit => viewInputHandler != null && viewInputHandler.IsInputEnabled(),

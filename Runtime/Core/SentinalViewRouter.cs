@@ -198,12 +198,25 @@ namespace Sentinal
             return focused;
         }
 
+        /// <summary>
+        /// Closes the focused non-root view through its nearest available close handler.
+        /// Parent handlers can own dismissal for child views such as tabs.
+        /// </summary>
         public static void CloseCurrentView()
         {
-            if (CurrentView == null || CurrentView.RootView)
+            ViewSelector currentView = CurrentView;
+            if (currentView == null || currentView.RootView)
                 return;
 
-            CloseView(CurrentView);
+            if (!currentView.TryGetComponent(out ICloseableView closeableView))
+                closeableView = currentView.GetComponentInParent<ICloseableView>();
+            if (closeableView == null)
+                closeableView = currentView.GetComponentInChildren<ICloseableView>();
+
+            if (closeableView != null)
+                closeableView.Close();
+            else
+                currentView.Close();
         }
 
         /// <summary>

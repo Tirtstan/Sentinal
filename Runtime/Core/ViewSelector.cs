@@ -238,7 +238,16 @@ namespace Sentinal
                 SelectFirstSelected();
         }
 
-        public void SetFirstSelected(GameObject firstSelected) => FirstSelected = firstSelected;
+        public void SetFirstSelected(GameObject target) => FirstSelected = target;
+
+        /// <summary>Updates the recovery target, optionally preserving current EventSystem selection.</summary>
+        public void SetFirstSelected(GameObject target, bool selectImmediately)
+        {
+            if (selectImmediately)
+                SetFirstSelected(target);
+            else
+                firstSelected = target;
+        }
 
         /// <summary>
         /// Applies the configured exclusive-view behavior immediately.

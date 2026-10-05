@@ -3,6 +3,7 @@
     "rootNamespace": "Sentinal.Tests",
     "references": [
         "tirt.sentinal",
+        "tirt.sentinal.InputSystem",
         "Unity.ugui",
         "Unity.InputSystem"
     ],

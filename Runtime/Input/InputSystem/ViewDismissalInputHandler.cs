@@ -341,17 +341,8 @@ namespace Sentinal.InputSystem
                 yield break;
             }
 
-            if (pendingCloseView.IsActive)
-            {
-                if (!pendingCloseView.TryGetComponent(out ICloseableView closeable))
-                    closeable = pendingCloseView.GetComponentInParent<ICloseableView>();
-                closeable ??= pendingCloseView.GetComponentInChildren<ICloseableView>();
-
-                if (closeable != null)
-                    closeable.Close();
-                else
-                    pendingCloseView.Close();
-            }
+            if (pendingCloseView.IsActive && SentinalViewRouter.CurrentView == pendingCloseView)
+                SentinalViewRouter.CloseCurrentView();
 
             pendingCloseView = null;
         }
