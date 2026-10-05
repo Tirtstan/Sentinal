@@ -915,7 +915,6 @@ MonoBehaviour:
   - {fileID: 401961014}
   - {fileID: 715949004}
   defaultTabIndex: 0
-  wrapTabs: 1
 --- !u!114 &765761138
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -935,6 +934,7 @@ MonoBehaviour:
     useActionName: 0
     actionName: TabSwitch
     actionReference: {fileID: 1487113498}
+  wrapTabs: 1
 --- !u!114 &765761139
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -46,6 +46,8 @@ namespace Sentinal.InputSystem.Components
         protected EventSystem eventSystem;
         protected InputFreshPressGate freshPressGate;
 
+        protected bool CanInteract => button != null && button.IsActive() && button.IsInteractable();
+
         public InputActionSelector ActionSelector
         {
             get => actionSelector;
@@ -170,7 +172,7 @@ namespace Sentinal.InputSystem.Components
         /// </summary>
         protected void Click()
         {
-            if (button == null)
+            if (!CanInteract)
                 return;
 
             if (deferExecution)
@@ -194,7 +196,7 @@ namespace Sentinal.InputSystem.Components
         /// </summary>
         protected void ExecuteClick()
         {
-            if (button == null || !button.gameObject.activeInHierarchy)
+            if (!CanInteract)
                 return;
 
             if (sendPointerEvents && eventSystem != null)

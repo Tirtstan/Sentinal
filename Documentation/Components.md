@@ -176,11 +176,13 @@ PlayerInput playerTwo = SentinalPlayer.GetPlayer(1);
 **Scope:** per-view input handler  
 **Add to GameObject:** alongside `ViewSelector`
 
-`ViewInputSystemHandler` enables or disables view-specific input behavior based on whether its `ViewSelector` is current.
+`ViewInputSystemHandler` enables or disables view-specific input behavior based on view focus.
 
 ![ViewInputSystemHandler inspector](Images/ViewInput.png)
 
 Use it when a view owns input actions only while it has focus.
+
+`GlobalFocus` enables input only for the assigned view. `LocalActive` follows visibility and remains enabled beneath an overlay. For a tabbed menu, leave the menu's handler on `GlobalFocus` and enable **Include Tab Panels In Focus** on `TabbedViewInputHandler`. It reads the panels from `TabbedView`, so tab switching works while a panel is focused and pauses when an unrelated view takes focus. Replacing tabs updates that focus rule automatically.
 
 ### `ActionMapGate`
 
@@ -230,7 +232,7 @@ Pick one strategy per player scope. Mixing `OnDisable` and `OnFocusLost` gates o
 **Scope:** canvas/global cancel listener  
 **Add to GameObject:** persistent UI object or canvas
 
-`ViewDismissalInputHandler` listens for a cancel/back action and closes the focused non-root view.
+`ViewDismissalInputHandler` listens for a cancel/back action and closes the focused non-root view. `SentinalViewRouter.CloseCurrentView()` uses the same close rule: it checks for `ICloseableView` on the focused view, then its parents and children. A child tab can therefore delegate Back to a parent menu's `ICloseableView` without being marked as a root view.
 
 ![ViewDismissalInputHandler inspector](Images/ViewDismissal.png)
 

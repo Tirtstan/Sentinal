@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.1.0] - Unreleased
+
+### Added
+
+- `ViewSelector.SetFirstSelected(GameObject, bool)` can update the fallback selection target without moving current EventSystem focus. The existing one-argument method retains its behavior.
+- `TabbedViewInputHandler` can keep tab-switch input active while its menu or one of `TabbedView`'s panels has focus. Unrelated overlays suspend it, and replacing tabs updates the focus set automatically.
+
+### Fixed
+
+- Input action buttons ignore presses and deferred clicks while their Unity Button is disabled or non-interactable, including when pointer events are disabled.
+- `SentinalViewRouter.CloseCurrentView()` now resolves `ICloseableView` on the current view, then its parents and children, matching Back/Cancel dismissal. A focused child tab can delegate closing to its parent menu.
+- Deferred Back/Cancel dismissal leaves a view open if another view takes focus before the deferred close runs.
+
 ## [5.0.0] - 2026-09-05
 
 ### Added

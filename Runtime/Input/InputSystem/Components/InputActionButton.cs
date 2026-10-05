@@ -38,7 +38,7 @@ namespace Sentinal.InputSystem.Components
 
         private void OnActionPerformed(InputAction.CallbackContext context)
         {
-            if (!ValidateFreshPress(isCancelEvent: false))
+            if (!ValidateFreshPress(isCancelEvent: false) || !CanInteract)
                 return;
 
             if (sendPointerEvents)
