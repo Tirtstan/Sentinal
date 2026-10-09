@@ -28,7 +28,7 @@ namespace Sentinal.Editor
                 }
                 else if (index >= 0)
                 {
-                    statusText += "OPEN (BACKGROUND)";
+                    statusText += SentinalViewRouter.IsFocusWithin(view) ? "FOCUS OWNER" : "OPEN (BACKGROUND)";
                     color = EditorColors.Connected;
                 }
                 else if (view.IsActive && !isTracked)

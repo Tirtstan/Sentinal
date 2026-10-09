@@ -5,7 +5,10 @@ This guide explains the components in Sentinal, what each one owns, and when to 
 ## Core concepts
 
 - **View**: A UGUI screen, panel, modal, HUD, or tab page with a `ViewSelector`.
-- **Current view**: The focused view chosen by highest priority, then most recent open order.
+- **Window**: An independent view with no focus parent. Windows compete globally by priority, then open order.
+- **Owned panel**: A view with an explicit `FocusParent`. Panels resolve focus only inside that owner, by local priority and open order. Transform parenting does not establish focus ownership.
+- **Current view**: The focused leaf inside the current window.
+- **Focus scope**: The focused leaf and its chain of explicit focus parents. An independent modal interrupts the covered window's entire scope.
 - **Root view**: A persistent view that should not be closed by normal back/cancel navigation.
 - **Address**: A `ViewAddress` ScriptableObject used to open a view without a direct scene reference.
 - **Group**: A `ViewGroupMask` channel used to isolate menus, overlays, HUDs, and popups from each other.
@@ -34,7 +37,9 @@ Key members:
 
 | Member                                          | Purpose                                                         |
 | ----------------------------------------------- | --------------------------------------------------------------- |
-| `CurrentView`                                   | Focused view based on priority and recency.                     |
+| `CurrentView`                                   | Focused leaf inside the current window.                         |
+| `CurrentWindow`                                 | Independent window owning the focus path.                       |
+| `IsFocusWithin(view)`                           | Whether the focused leaf belongs to this explicit owner chain. |
 | `MostRecentView`                                | Last view added to history.                                     |
 | `OpenView(ViewAddress)`                         | Resolves and opens a view through a `ViewAddress`.              |
 | `CloseCurrentView()`                            | Closes the focused view unless it is a root view.               |
@@ -56,8 +61,9 @@ Common inspector fields:
 | Field                      | Use                                                                                    |
 | -------------------------- | -------------------------------------------------------------------------------------- |
 | **Address**                | Optional `ViewAddress` for decoupled routing.                                          |
-| **Priority**               | Higher priority wins focus over lower priority views. Equal priority uses recency.     |
-| **Track View**             | Adds the view to router history while active. Disable for purely local/tab sub-panels. |
+| **Focus Parent**           | Explicit focus owner. Leave empty for independent windows; `TabbedView` assigns this for its panels. |
+| **Priority**               | Priority among siblings in the same focus scope. Equal priority uses open order.       |
+| **Track View**             | Adds the view to router history while active. Owned panels must remain tracked. |
 | **Root View**              | Prevents cancel/back from auto-closing persistent screens.                             |
 | **Group Mask**             | Assigns the view to one or more routing groups.                                        |
 | **Exclusive View**         | Closes other matching non-root views when this view opens.                             |
@@ -182,14 +188,16 @@ PlayerInput playerTwo = SentinalPlayer.GetPlayer(1);
 
 Use it when a view owns input actions only while it has focus.
 
-`GlobalFocus` enables input only for the assigned view. `LocalActive` follows visibility and remains enabled beneath an overlay. For a tabbed menu, leave the menu's handler on `GlobalFocus` and enable **Include Tab Panels In Focus** on `TabbedViewInputHandler`. It reads the panels from `TabbedView`, so tab switching works while a panel is focused and pauses when an unrelated view takes focus. Replacing tabs updates that focus rule automatically.
+`GlobalFocus` enables input only for the focused leaf. `FocusWithin` enables shared shortcuts while the assigned view is anywhere in the explicit focus-owner chain. Both suspend input under an independent modal. `LocalActive` follows visibility and remains enabled beneath an overlay.
+
+For tabs, use `FocusWithin` on the owner's shared handler and `GlobalFocus` on each panel's handler. Tab switching uses the normal handler subscription rule; it has no separate tab-membership policy.
 
 ### `ActionMapGate`
 
 **Scope:** per-view action map gate  
 **Add to GameObject:** alongside `ViewSelector`
 
-`ActionMapGate` applies action-map rules when its view becomes focused.
+The nearest enabled `ActionMapGate` in the explicit focus-owner chain owns action maps. A panel inherits its owner's gate unless it declares its own. `ActionMapGate.Current` reports this gate. One shared handoff releases the old gate before the new gate captures and applies its rules; component subscription order does not decide ownership.
 
 ![ActionMapGate inspector](Images/ActionMapGate.png)
 
@@ -222,17 +230,17 @@ Restore timing (shown while restore is enabled):
 
 | Timing          | Behavior                                                                                                                                                          |
 | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **OnDisable**   | Holds the snapshot across refocusing and restores only when the owning gate is disabled while its view is current. Nested restore gates unwind like a stack, innermost first. Use for modals over menus. |
+| **OnDisable**   | Holds the snapshot while covered. If the gate still owns maps when its view closes or the gate disables, restore before handing maps to the next gate. A background gate closing discards its snapshot. |
 | **OnFocusLost** | Restores as soon as the view loses focus, so the next view captures a clean base instead of this gate's applied state. Use for sibling views that each clean up after themselves. |
 
-Pick one strategy per player scope. Mixing `OnDisable` and `OnFocusLost` gates over the same players can clobber snapshots: the losing gate must restore before the gaining gate captures, which follows enable order, so enable background views before the modals that cover them.
+The handoff always releases before capturing. Closing a window with an owned panel gate unwinds held ancestor snapshots before the next window captures maps. Moving between panels that inherit the same gate keeps its map session intact. `SentinalViewRouter.Refresh()` explicitly reapplies the current gate for late-joining players.
 
 ### `ViewDismissalInputHandler`
 
 **Scope:** canvas/global cancel listener  
 **Add to GameObject:** persistent UI object or canvas
 
-`ViewDismissalInputHandler` listens for a cancel/back action and closes the focused non-root view. `SentinalViewRouter.CloseCurrentView()` uses the same close rule: it checks for `ICloseableView` on the focused view, then its parents and children. A child tab can therefore delegate Back to a parent menu's `ICloseableView` without being marked as a root view.
+`ViewDismissalInputHandler` listens for cancel/back and closes the focused non-root window. `SentinalViewRouter.CloseCurrentView()` walks the explicit focus-owner chain for the nearest `ICloseableView`. With no handler it closes `CurrentWindow`. Transform parents and unrelated child objects do not participate. Root protection belongs to the window.
 
 ![ViewDismissalInputHandler inspector](Images/ViewDismissal.png)
 
@@ -274,14 +282,22 @@ Use it for destructive or high-commitment actions such as Leave Match, Delete Sa
 
 `TabbedView` connects a list of `Toggle`s to a list of `ViewSelector` panels. When a toggle becomes active, the matching panel is shown and the others are hidden.
 
+Assign **Focus Owner** to the tracked window or panel owning the tabs. `TabbedView` assigns each panel's `FocusParent` before activation, restores the selected panel when enabled, and hides its panels when disabled. Panels may live outside the owner's Transform hierarchy.
+
+A panel list requires one toggle per unique tracked panel and an authored tracked owner. Missing owners, duplicate panels, ownership conflicts, and cycles fail validation. A toggle-only controller may omit panels and its owner.
+
+Wire shortcut buttons directly to `TabbedView.SelectTab(ViewSelector)` with an authored panel argument. It selects the matching toggle and panel through the same lifecycle as header navigation. A missing or unregistered panel fails explicitly before selection changes. `SelectTab(int)` remains available for index-based callers.
+
 Use it for settings categories, inventory pages, character tabs, or lobby panels.
+
+Migration from flat tab routing: assign `FocusOwner`; keep panels tracked; set shared owner input to `FocusWithin`; keep panel input on `GlobalFocus`. Replace `Include Tab Panels In Focus` with `FocusWithin` on the assigned input handler. Root protection and global priority belong to the independent window.
 
 ### `TabbedViewInputHandler`
 
 **Scope:** input wrapper for `TabbedView`  
 **Add to GameObject:** with or near `TabbedView`
 
-`TabbedViewInputHandler` binds input actions to `TabbedView.Next()` and `TabbedView.Previous()`.
+`TabbedViewInputHandler` binds input actions to `TabbedView.Next(bool wrap)` and `TabbedView.Previous(bool wrap)`. Its assigned `ViewInputSystemHandler` owns focus policy.
 
 Use it for shoulder-button, bumper, trigger, or keyboard tab cycling.
 
@@ -373,11 +389,11 @@ Settings                          ViewSelector
 ├── TabBar                        TabbedView, TabbedViewInputHandler
 │   ├── AudioTab                  Toggle
 │   └── VideoTab                  Toggle
-├── AudioPanel                    ViewSelector (Track View off)
-└── VideoPanel                    ViewSelector (Track View off)
+├── AudioPanel                    ViewSelector (tracked owned panel)
+└── VideoPanel                    ViewSelector (tracked owned panel)
 ```
 
-Parent `TabbedView`, one `Toggle` per tab, one `ViewSelector` panel per tab, `TabbedViewInputHandler` for bumper/trigger navigation.
+Assign the parent view as `TabbedView.FocusOwner`, one `Toggle` per tracked panel, and `FocusWithin` on the shared parent handler. Each panel uses `GlobalFocus`. `TabbedViewInputHandler` supplies bumper/trigger navigation; the parent gate is inherited automatically.
 
 ## Coming from BNav
 

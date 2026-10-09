@@ -49,6 +49,65 @@ namespace Sentinal.Tests
             Assert.That(didNotifySecondToggle, Is.True);
         }
 
+        [Test]
+        public void PanelsWithoutAnAuthoredOwnerAreRejectedBeforeReplacingTabs()
+        {
+            TabbedView tabbedView = tabbedViewObject.GetComponent<TabbedView>();
+            Toggle firstToggle = firstToggleObject.GetComponent<Toggle>();
+            Toggle secondToggle = secondToggleObject.GetComponent<Toggle>();
+            ViewSelector panel = secondToggleObject.AddComponent<ViewSelector>();
+            tabbedView.ReplaceTabs(new[] { firstToggle }, System.Array.Empty<ViewSelector>());
+
+            Assert.Throws<System.InvalidOperationException>(
+                () => tabbedView.ReplaceTabs(new[] { secondToggle }, new[] { panel })
+            );
+            Assert.That(tabbedView.GroupToggles[0], Is.EqualTo(firstToggle));
+            Assert.That(tabbedView.GroupPanels, Is.Empty);
+            Assert.That(panel.FocusParent, Is.Null);
+        }
+
+        [Test]
+        public void SelectPanelUsesItsRegisteredToggleAndOwnership()
+        {
+            TabbedView tabbedView = tabbedViewObject.GetComponent<TabbedView>();
+            ViewSelector owner = tabbedViewObject.AddComponent<ViewSelector>();
+            ViewSelector firstPanel = firstToggleObject.AddComponent<ViewSelector>();
+            ViewSelector secondPanel = secondToggleObject.AddComponent<ViewSelector>();
+            Toggle firstToggle = firstToggleObject.GetComponent<Toggle>();
+            Toggle secondToggle = secondToggleObject.GetComponent<Toggle>();
+            tabbedView.FocusOwner = owner;
+            tabbedView.ReplaceTabs(new[] { firstToggle, secondToggle }, new[] { firstPanel, secondPanel });
+
+            tabbedView.SelectTab(secondPanel);
+
+            Assert.That(tabbedView.CurrentTabIndex, Is.EqualTo(1));
+            Assert.That(secondToggle.isOn, Is.True);
+            Assert.That(firstPanel.gameObject.activeSelf, Is.False);
+            Assert.That(secondPanel.gameObject.activeSelf, Is.True);
+            Assert.That(secondPanel.FocusParent, Is.EqualTo(owner));
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void InvalidPanelSelectionDoesNotChangeTheSelectedTab(bool missing)
+        {
+            TabbedView tabbedView = tabbedViewObject.GetComponent<TabbedView>();
+            ViewSelector owner = tabbedViewObject.AddComponent<ViewSelector>();
+            ViewSelector panel = firstToggleObject.AddComponent<ViewSelector>();
+            Toggle toggle = firstToggleObject.GetComponent<Toggle>();
+            tabbedView.FocusOwner = owner;
+            tabbedView.ReplaceTabs(new[] { toggle }, new[] { panel });
+
+            Assert.That(
+                () => tabbedView.SelectTab(missing ? null : owner),
+                Throws.InstanceOf<System.ArgumentException>()
+            );
+
+            Assert.That(tabbedView.CurrentTabIndex, Is.EqualTo(0));
+            Assert.That(toggle.isOn, Is.True);
+            Assert.That(panel.gameObject.activeSelf, Is.True);
+        }
+
         [TestCase(true, 0)]
         [TestCase(false, 1)]
         public void NextUsesCallerWrapPolicy(bool wrap, int expectedIndex)

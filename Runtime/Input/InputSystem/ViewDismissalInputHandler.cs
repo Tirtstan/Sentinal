@@ -317,13 +317,11 @@ namespace Sentinal.InputSystem
                 return;
 
             pendingCloseView = SentinalViewRouter.CurrentView;
-            if (pendingCloseView == null || pendingCloseView.RootView)
+            ViewSelector window = SentinalViewRouter.CurrentWindow;
+            if (pendingCloseView == null || window == null || window.RootView)
                 return;
 
-            if (
-                groupMask != ViewGroupMask.Everything
-                && (groupMask & pendingCloseView.GroupMask) == ViewGroupMask.Nothing
-            )
+            if (groupMask != ViewGroupMask.Everything && (groupMask & window.GroupMask) == ViewGroupMask.Nothing)
                 return;
 
             closeRequestedThisFrame = true;
@@ -335,7 +333,11 @@ namespace Sentinal.InputSystem
             yield return null;
 
             closeRequestedThisFrame = false;
-            if (pendingCloseView == null || pendingCloseView.RootView)
+            if (
+                pendingCloseView == null
+                || pendingCloseView.FocusWindow == null
+                || pendingCloseView.FocusWindow.RootView
+            )
             {
                 pendingCloseView = null;
                 yield break;

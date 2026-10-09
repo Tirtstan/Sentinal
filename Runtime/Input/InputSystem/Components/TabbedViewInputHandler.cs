@@ -22,12 +22,6 @@ namespace Sentinal.InputSystem.Components
         [Tooltip("Whether tab switching wraps around from the last tab to the first and vice versa.")]
         private bool wrapTabs = true;
 
-        [SerializeField]
-        [Tooltip(
-            "Keep tab-switch input enabled while this handler's view or one of the Tabbed View's panels is focused. Other views suspend it."
-        )]
-        private bool includeTabPanelsInFocus;
-
         private InputAction switchTabAction;
 
         public TabbedView TabbedView
@@ -46,20 +40,6 @@ namespace Sentinal.InputSystem.Components
                 if (isActiveAndEnabled && tabbedView != null)
                     tabbedView.TabsChanged += OnTabsChanged;
 
-                if (isActiveAndEnabled)
-                    UpdateSubscription();
-            }
-        }
-
-        public bool IncludeTabPanelsInFocus
-        {
-            get => includeTabPanelsInFocus;
-            set
-            {
-                if (includeTabPanelsInFocus == value)
-                    return;
-
-                includeTabPanelsInFocus = value;
                 if (isActiveAndEnabled)
                     UpdateSubscription();
             }
@@ -117,7 +97,6 @@ namespace Sentinal.InputSystem.Components
         protected override void OnEnable()
         {
             base.OnEnable();
-            SentinalViewRouter.OnSwitch += OnViewSwitch;
             if (tabbedView != null)
                 tabbedView.TabsChanged += OnTabsChanged;
             UpdateSubscription();
@@ -125,38 +104,13 @@ namespace Sentinal.InputSystem.Components
 
         protected override void OnDisable()
         {
-            SentinalViewRouter.OnSwitch -= OnViewSwitch;
             if (tabbedView != null)
                 tabbedView.TabsChanged -= OnTabsChanged;
             base.OnDisable();
         }
 
-        public override bool ShouldSubscribe()
-        {
-            if (!includeTabPanelsInFocus || InputWhenCurrentMode != InputWhenCurrentMode.Inherit)
-                return base.ShouldSubscribe();
-
-            if (viewInputHandler == null || !viewInputHandler.isActiveAndEnabled || tabbedView == null)
-                return false;
-
-            ViewSelector currentView = SentinalViewRouter.CurrentView;
-            if (currentView == null)
-                return false;
-
-            if (currentView == viewInputHandler.ViewSelector)
-                return true;
-
-            var panels = tabbedView.GroupPanels;
-            for (int i = 0; i < panels.Count; i++)
-            {
-                if (currentView == panels[i])
-                    return true;
-            }
-
-            return false;
-        }
-
-        private void OnViewSwitch(ViewSelector _, ViewSelector __) => UpdateSubscription();
+        public override bool ShouldSubscribe() =>
+            tabbedView != null && tabbedView.GroupToggles.Count > 0 && base.ShouldSubscribe();
 
         private void OnTabsChanged() => UpdateSubscription();
 

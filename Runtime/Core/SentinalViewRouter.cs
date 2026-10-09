@@ -9,6 +9,7 @@ namespace Sentinal
     /// <summary>
     /// Static view router that replaces the old SentinalManager singleton.
     /// Tracks view history, handles switching, hiding, and restoring.
+    /// Independent windows compete globally; explicitly owned panels resolve within their window.
     /// No scene object required — views self-register on enable.
     /// </summary>
     public static class SentinalViewRouter
@@ -24,8 +25,8 @@ namespace Sentinal
         public static event Action<ViewSelector> OnRemove;
 
         /// <summary>
-        /// Event triggered when switching between views.
-        /// Provides the previous view and the new view respectively.
+        /// Reports a change to the focused view or its ownership path.
+        /// Refresh/configuration notifications can report the same view twice.
         /// </summary>
         public static event Action<ViewSelector, ViewSelector> OnSwitch;
 
@@ -41,6 +42,8 @@ namespace Sentinal
         private static bool lastNonRootViewPresence;
         private static bool isProcessing;
         private static readonly Queue<Action> deferredActions = new();
+        private static ViewSelector currentWindow;
+        private static ViewSelector currentView;
 
         /// <summary>
         /// Gets the most recently opened view in the history.
@@ -49,10 +52,12 @@ namespace Sentinal
         public static ViewSelector MostRecentView => viewHistory.Count > 0 ? viewHistory.Last.Value : null;
 
         /// <summary>
-        /// Gets the focused view based on priority (highest first) and then recency.
-        /// Returns null if no views are open.
+        /// Gets the focused leaf inside the current window. Null when no window is focused.
         /// </summary>
-        public static ViewSelector CurrentView => GetCurrentView();
+        public static ViewSelector CurrentView => currentView;
+
+        /// <summary>The independent window owning the focused panel, chosen by priority and open order.</summary>
+        public static ViewSelector CurrentWindow => currentWindow;
 
         /// <summary>
         /// Checks if any views are open, optionally filtered by a group mask.
@@ -82,7 +87,7 @@ namespace Sentinal
             int mask = groupMask?.Value ?? -1;
             foreach (var view in viewHistory)
             {
-                if (view != null && view.IsActive && !view.RootView)
+                if (view != null && ReferenceEquals(view.FocusParent, null) && view.IsActive && !view.RootView)
                 {
                     if (!MatchesGroupMask(mask, view.GroupMask))
                         continue;
@@ -110,10 +115,9 @@ namespace Sentinal
             isProcessing = true;
             try
             {
-                ViewSelector previousFocusedView = CurrentView;
                 viewHistory.AddLast(view);
                 OnAdd?.Invoke(view);
-                NotifyFocusChanged(previousFocusedView, selectCurrentView: true);
+                NotifyFocusChanged(selectCurrentView: true);
                 NotifyNonRootViewPresenceChangedIfNeeded();
             }
             finally
@@ -137,10 +141,9 @@ namespace Sentinal
             isProcessing = true;
             try
             {
-                ViewSelector previousFocusedView = CurrentView;
                 viewHistory.Remove(view);
                 OnRemove?.Invoke(view);
-                NotifyFocusChanged(previousFocusedView, selectCurrentView: true);
+                NotifyFocusChanged(selectCurrentView: true);
                 NotifyNonRootViewPresenceChangedIfNeeded();
             }
             finally
@@ -165,13 +168,25 @@ namespace Sentinal
         public static bool IsCurrent(ViewSelector view) => CurrentView == view;
 
         /// <summary>
-        /// Gets the current view based on priority (highest first) and recency (tie-breaker).
+        /// Gets the focused leaf of the current window's explicit ownership chain.
         /// </summary>
-        public static ViewSelector GetCurrentView()
-        {
-            if (viewHistory.Count == 0)
-                return null;
+        public static ViewSelector GetCurrentView() => CurrentView;
 
+        /// <summary>True for the focused view and its explicit focus owners. Independent modals interrupt this scope.</summary>
+        public static bool IsFocusWithin(ViewSelector view)
+        {
+            if (view == null)
+                return false;
+
+            for (ViewSelector focused = CurrentView; focused != null; focused = focused.FocusParent)
+                if (focused == view)
+                    return true;
+
+            return false;
+        }
+
+        private static ViewSelector FindFocusedChild(ViewSelector parent)
+        {
             ViewSelector focused = null;
             int maxPriority = int.MinValue;
 
@@ -179,7 +194,7 @@ namespace Sentinal
             while (node != null)
             {
                 ViewSelector view = node.Value;
-                if (view == null)
+                if (view == null || !ReferenceEquals(view.FocusParent, parent) || !view.enabled || !view.IsActive)
                 {
                     node = node.Previous;
                     continue;
@@ -204,19 +219,18 @@ namespace Sentinal
         /// </summary>
         public static void CloseCurrentView()
         {
-            ViewSelector currentView = CurrentView;
-            if (currentView == null || currentView.RootView)
+            ViewSelector focused = CurrentView;
+            if (focused == null || CurrentWindow == null || CurrentWindow.RootView)
                 return;
 
-            if (!currentView.TryGetComponent(out ICloseableView closeableView))
-                closeableView = currentView.GetComponentInParent<ICloseableView>();
-            if (closeableView == null)
-                closeableView = currentView.GetComponentInChildren<ICloseableView>();
+            for (ViewSelector owner = focused; owner != null; owner = owner.FocusParent)
+                if (owner.TryGetComponent(out ICloseableView closeableView))
+                {
+                    closeableView.Close();
+                    return;
+                }
 
-            if (closeableView != null)
-                closeableView.Close();
-            else
-                currentView.Close();
+            CurrentWindow.Close();
         }
 
         /// <summary>
@@ -225,17 +239,28 @@ namespace Sentinal
         /// </summary>
         public static void Refresh()
         {
-            if (CurrentView != null)
-            {
-                OnSwitch?.Invoke(CurrentView, CurrentView);
-                TrySelectCurrentView();
-            }
+            NotifyConfigurationChanged();
         }
 
-        internal static void NotifyConfigurationChanged(ViewSelector previousFocusedView)
+        internal static void NotifyConfigurationChanged()
         {
-            NotifyFocusChanged(previousFocusedView, selectCurrentView: true);
-            NotifyNonRootViewPresenceChangedIfNeeded();
+            if (isProcessing)
+            {
+                deferredActions.Enqueue(NotifyConfigurationChanged);
+                return;
+            }
+
+            isProcessing = true;
+            try
+            {
+                NotifyFocusChanged(selectCurrentView: true, forceNotification: true);
+                NotifyNonRootViewPresenceChangedIfNeeded();
+            }
+            finally
+            {
+                isProcessing = false;
+                ProcessDeferredActions();
+            }
         }
 
         /// <summary>
@@ -282,7 +307,11 @@ namespace Sentinal
             var viewsToClose = new List<ViewSelector>(viewHistory);
             foreach (var view in viewsToClose)
             {
-                if (view == excludeView)
+                if (
+                    view == null
+                    || !ReferenceEquals(view.FocusParent, null)
+                    || (excludeView != null && view == excludeView.FocusWindow)
+                )
                     continue;
 
                 if (view.RootView && excludeRootViews)
@@ -316,7 +345,12 @@ namespace Sentinal
             var snapshot = new List<ViewSelector>(viewHistory);
             foreach (var view in snapshot)
             {
-                if (view == excludeView || !view.gameObject.activeInHierarchy)
+                if (
+                    view == null
+                    || !ReferenceEquals(view.FocusParent, null)
+                    || (excludeView != null && view == excludeView.FocusWindow)
+                    || !view.IsActive
+                )
                     continue;
 
                 if (!MatchesGroupMask(mask, view.GroupMask))
@@ -340,6 +374,8 @@ namespace Sentinal
                 view.gameObject.SetActive(false);
 
             hiddenViewStack.Push((excludeView, targets));
+            NotifyFocusChanged(selectCurrentView: true);
+            NotifyNonRootViewPresenceChangedIfNeeded();
         }
 
         /// <summary>
@@ -373,7 +409,6 @@ namespace Sentinal
             if (entry.views == null || entry.views.Count == 0)
                 return;
 
-            ViewSelector previousFocusedView = CurrentView;
             foreach (var view in entry.views)
             {
                 if (view == null)
@@ -383,7 +418,7 @@ namespace Sentinal
                 view.gameObject.SetActive(true);
             }
 
-            NotifyFocusChanged(previousFocusedView, selectCurrentView: true);
+            NotifyFocusChanged(selectCurrentView: true);
             NotifyNonRootViewPresenceChangedIfNeeded();
         }
 
@@ -439,11 +474,22 @@ namespace Sentinal
                 hiddenViewStack.Push(tempStack.Pop());
         }
 
-        private static void NotifyFocusChanged(ViewSelector previousFocusedView, bool selectCurrentView)
+        private static void NotifyFocusChanged(bool selectCurrentView, bool forceNotification = false)
         {
-            ViewSelector newFocusedView = CurrentView;
-            if (previousFocusedView != newFocusedView)
-                OnSwitch?.Invoke(previousFocusedView, newFocusedView);
+            ViewSelector previousFocusedView = currentView;
+            ViewSelector previousWindow = currentWindow;
+            currentWindow = FindFocusedChild(null);
+            currentView = currentWindow;
+            ViewSelector child;
+            while (currentView != null && (child = FindFocusedChild(currentView)) != null)
+                currentView = child;
+
+            if (
+                previousFocusedView != currentView
+                || previousWindow != currentWindow
+                || (forceNotification && currentView != null)
+            )
+                OnSwitch?.Invoke(previousFocusedView, currentView);
 
             if (selectCurrentView)
                 TrySelectCurrentView();
@@ -515,9 +561,9 @@ namespace Sentinal
                 else
                 {
                     string marker = view == current ? " *" : "";
-                    string parentName = view.transform.parent != null ? view.transform.parent.name : "None";
+                    string parentName = view.FocusParent != null ? view.FocusParent.name : "Window";
                     viewInfoBuilder.AppendLine(
-                        $"  [{index}] {view.name} (Parent: {parentName}, P:{view.Priority}){marker}"
+                        $"  [{index}] {view.name} (Focus owner: {parentName}, P:{view.Priority}){marker}"
                     );
                 }
 
@@ -531,6 +577,8 @@ namespace Sentinal
         private static void Reset()
         {
             viewHistory.Clear();
+            currentWindow = null;
+            currentView = null;
             hiddenViewStack.Clear();
             OnAdd = null;
             OnRemove = null;

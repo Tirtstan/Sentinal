@@ -5,7 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [5.1.0] - Unreleased
+## [5.2.0] - 2026-10-09
+
+### Added
+
+- `ViewSelector.FocusParent` declares focus ownership independently of Transform parenting. `FocusWindow` resolves the owning window.
+- `SentinalViewRouter.CurrentWindow` exposes the focused window while `CurrentView` identifies its focused panel. `IsFocusWithin(ViewSelector)` checks whether focus belongs to a view or one of its owned panels.
+- `HandlerInputMode.FocusWithin` keeps shared menu input enabled while an owned panel is focused and suspends it when an independent modal takes focus.
+- `TabbedView.FocusOwner` binds panel ownership before activation. Panel lists validate their owner, matching toggles, unique tracked panels, conflicting ownership, and cycles.
+- `TabbedView.SelectTab(ViewSelector)` selects an authored panel through the existing toggle lifecycle and can be wired directly to UGUI button events. Missing or unregistered panels fail before selection changes.
+- `ActionMapGate.Current` exposes the enabled gate inherited through the focused ownership chain. Editor focus indicators and router diagnostics display ownership.
+
+### Changed
+
+- Routing selects an independent window first, then its focused owned panel. Panel priorities apply within their owner, and registration order between a window and its panels no longer decides their focus relationship.
+- Action-map gates use one coordinated focus subscription and release the previous gate before applying the next. Switching panels that inherit the same gate retains its map session; closing nested gates unwinds their owners' saved states.
+- Back/Cancel resolves the nearest `ICloseableView` through explicit focus ownership. Root protection, group filtering, bulk close, and hide operations use the owning window.
+- `TabbedViewInputHandler` uses its assigned input handler's focus policy instead of maintaining a separate tab-panel focus list. The tabbed-view sample and component documentation use explicit ownership.
+
+### Fixed
+
+- Owned panels receive focus and input on the first menu opening, regardless of whether the window or panel registers first.
+- Background tracked views cannot overwrite EventSystem selection while another view holds focus.
+- Disabling a `ViewInputSystemHandler` disables its input in every mode.
+- Gate handoffs no longer depend on individual component subscription order or allow background gates to overwrite a focused modal's action map.
+
+### Migration
+
+- Assign each panel-based `TabbedView` an authored, tracked **Focus Owner**. It assigns its panels' `FocusParent` at runtime; independent windows leave `FocusParent` unset.
+- Set shared window input to **FocusWithin** and keep panel-specific input on **GlobalFocus**. Existing input-mode enum values retain their serialized numbers.
+- Replace the removed `TabbedViewInputHandler.IncludeTabPanelsInFocus` property and Inspector option with **FocusWithin** on its assigned `ViewInputSystemHandler`.
+- Author focus ownership for child views that delegate Back/Cancel to a parent handler. Transform ancestry and child-component searches no longer determine dismissal ownership.
+- Use `CurrentWindow` for window-wide decisions, `CurrentView` for the focused panel, and `ActionMapGate.Current` to resolve the gate controlling that focus.
+
+## [5.1.0] - 2026-10-05
 
 ### Added
 

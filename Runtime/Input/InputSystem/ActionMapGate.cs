@@ -8,7 +8,7 @@ namespace Sentinal.InputSystem
 {
     /// <summary>
     /// Per-view component that controls which action maps are active when this view has focus.
-    /// Applies explicit map state rules while this view has focus.
+    /// The nearest enabled gate in the explicit focus-owner chain owns action maps.
     /// <para>
     /// <b>Configured mode</b>: Apply per-map rules from a list (Enable/Disable/Inherit).<br/>
     /// <b>Exclusive mode</b>: Force-enable ONE map and disable all others (e.g. modal UI that must own all input).
@@ -17,7 +17,7 @@ namespace Sentinal.InputSystem
     /// <b>Restore Previous Action Map State</b> (opt-in): captures each target player's map
     /// state when this gate applies and restores it according to <see cref="RestoreTiming"/>.
     /// <see cref="RestoreTiming.OnDisable"/> (default) holds the snapshot across refocusing and
-    /// restores only when the gate is disabled while current, so nested views unwind like a stack.
+    /// restores when the gate still owns maps as it closes, before the next gate applies.
     /// <see cref="RestoreTiming.OnFocusLost"/> restores as soon as the view loses focus, so the
     /// next view captures a clean base instead of this gate's applied state.
     /// </para>
@@ -49,10 +49,14 @@ namespace Sentinal.InputSystem
 
         public enum RestoreTiming
         {
-            [Tooltip("Hold the snapshot across refocusing; restore only when this gate is disabled while its view is current. Use for nested modals that unwind like a stack.")]
+            [Tooltip(
+                "Hold the snapshot while covered. Restore on closing only while this gate owns maps; a background gate closing discards its snapshot."
+            )]
             OnDisable,
 
-            [Tooltip("Restore as soon as this view loses focus, so the next view captures a clean base. Use for sibling views that each clean up after themselves.")]
+            [Tooltip(
+                "Restore as soon as this view loses focus, so the next view captures a clean base. Use for sibling views that each clean up after themselves."
+            )]
             OnFocusLost,
         }
 
@@ -77,7 +81,7 @@ namespace Sentinal.InputSystem
 
         [SerializeField]
         [Tooltip(
-            "Captures each target player's action-map state when this gate applies, and restores it according to Restore Timing. OnDisable holds the snapshot across refocusing and restores only when the gate is disabled while current; OnFocusLost restores as soon as the view loses focus."
+            "Captures each target player's action-map state when this gate applies, and restores it according to Restore Timing. OnDisable holds the snapshot while covered and restores on closing if the gate still owns maps; OnFocusLost restores before the next gate takes over."
         )]
         private bool restorePreviousActionMapState;
 
@@ -85,8 +89,10 @@ namespace Sentinal.InputSystem
         [Tooltip("When a captured snapshot is restored. Only used while Restore Previous Action Map State is enabled.")]
         private RestoreTiming restoreTiming = RestoreTiming.OnDisable;
 
-        private ViewSelector view;
         private bool isApplied;
+        private ViewSelector view;
+        private static ActionMapGate appliedGate;
+        private static bool listeningForFocus;
         private readonly Dictionary<PlayerInput, PlayerActionMapSnapshot> appliedSnapshots = new();
         private ReadOnlyCollection<ActionMapConfig> readOnlyActionMaps;
 
@@ -118,6 +124,27 @@ namespace Sentinal.InputSystem
 
         public bool IsApplied => isApplied;
 
+        /// <summary>The single gate owning the current focus path, or null when that path has no gate.</summary>
+        public static ActionMapGate Current
+        {
+            get
+            {
+                ViewSelector window = SentinalViewRouter.CurrentWindow;
+                if (window == null || !window.enabled || !window.IsActive)
+                    return null;
+
+                for (
+                    ViewSelector focused = SentinalViewRouter.CurrentView;
+                    focused != null;
+                    focused = focused.FocusParent
+                )
+                    if (focused.TryGetComponent(out ActionMapGate gate) && gate.isActiveAndEnabled)
+                        return gate;
+
+                return null;
+            }
+        }
+
         public bool RestorePreviousActionMapState
         {
             get => restorePreviousActionMapState;
@@ -134,44 +161,79 @@ namespace Sentinal.InputSystem
 
         private void OnEnable()
         {
-            SentinalViewRouter.OnSwitch += OnSwitch;
+            if (!listeningForFocus)
+            {
+                SentinalViewRouter.OnSwitch += OnSwitch;
+                listeningForFocus = true;
+            }
 
-            if (SentinalViewRouter.IsCurrent(view))
-                Apply();
-            else
-                isApplied = false;
+            ReconcileFocus();
         }
 
         private void OnDisable()
         {
-            SentinalViewRouter.OnSwitch -= OnSwitch;
+            // Reconcile first so a closing panel can unwind this owner's held snapshot.
+            ReconcileFocus();
+            ClearSnapshots();
+            isApplied = false;
+        }
 
-            // Only the current view owns the live map state. A background gate
-            // dropping out must never restore over the focused view.
-            if (SentinalViewRouter.IsCurrent(view))
+        private static void OnSwitch(ViewSelector prev, ViewSelector next) => ReconcileFocus(forceApply: prev == next);
+
+        private static void ReconcileFocus(bool forceApply = false)
+        {
+            ActionMapGate next = Current;
+            if (appliedGate != next)
+            {
+                // Release before capture/apply so nested gates observe the correct prior map state.
+                if (appliedGate != null)
+                {
+                    bool closing = appliedGate.IsClosing();
+                    appliedGate.ReleaseFocus(closing);
+                    if (closing)
+                        appliedGate.RestoreClosingOwners();
+                }
+
+                appliedGate = next;
+                if (appliedGate != null)
+                    appliedGate.Apply();
+            }
+            else if (forceApply && appliedGate != null)
+                appliedGate.Apply();
+        }
+
+        private void ReleaseFocus(bool closing)
+        {
+            if (restorePreviousActionMapState && (closing || restoreTiming == RestoreTiming.OnFocusLost))
                 Restore();
-            else
-                ClearSnapshots();
 
             isApplied = false;
         }
 
-        private void OnSwitch(ViewSelector prev, ViewSelector next)
-        {
-            if (next == view)
-            {
-                Apply();
-            }
-            else if (prev == view)
-            {
-                // Eager mode cleans up the moment focus leaves, so the next view
-                // captures a clean base. Default mode holds the snapshot while
-                // covered so nested views unwind like a stack on disable.
-                if (restorePreviousActionMapState && restoreTiming == RestoreTiming.OnFocusLost)
-                    Restore();
+        private bool IsClosing() =>
+            !isActiveAndEnabled
+            || view == null
+            || !view.enabled
+            || !view.TrackView
+            || view.FocusWindow == null
+            || !view.FocusWindow.IsActive
+            || SentinalViewRouter.GetViewIndex(view.FocusWindow) < 0;
 
-                isApplied = false;
-            }
+        private void RestoreClosingOwners()
+        {
+            // A whole window can disable before its owned panel callbacks run.
+            // Unwind held ancestor snapshots before the next window captures maps.
+            for (ViewSelector owner = view.FocusParent; owner != null; owner = owner.FocusParent)
+                if (owner.TryGetComponent(out ActionMapGate gate) && gate.IsClosing())
+                    gate.ReleaseFocus(closing: true);
+        }
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetFocusOwnership()
+        {
+            SentinalViewRouter.OnSwitch -= OnSwitch;
+            listeningForFocus = false;
+            appliedGate = null;
         }
 
         private void Apply()
@@ -244,7 +306,15 @@ namespace Sentinal.InputSystem
             IReadOnlyList<ActionMapConfig> configurations
         )
         {
-            Reconfigure(targets, specificPlayerKey, gateMode, exclusiveActionMap, configurations, restorePreviousActionMapState, restoreTiming);
+            Reconfigure(
+                targets,
+                specificPlayerKey,
+                gateMode,
+                exclusiveActionMap,
+                configurations,
+                restorePreviousActionMapState,
+                restoreTiming
+            );
         }
 
         public void Reconfigure(
@@ -257,7 +327,7 @@ namespace Sentinal.InputSystem
             RestoreTiming restoreWhen
         )
         {
-            bool shouldReapply = isActiveAndEnabled && SentinalViewRouter.IsCurrent(view);
+            bool shouldReapply = isActiveAndEnabled && Current == this;
 
             targetPlayers = targets;
             playerKey = specificPlayerKey;
@@ -329,12 +399,6 @@ namespace Sentinal.InputSystem
             }
 
             return list;
-        }
-
-        private void Reset()
-        {
-            if (view == null)
-                view = GetComponent<ViewSelector>();
         }
 
         private sealed class PlayerActionMapSnapshot

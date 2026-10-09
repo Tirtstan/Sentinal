@@ -906,6 +906,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 506333bcb439a03409693ab05960546a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TabbedPanel
+  focusOwner: {fileID: 1630408056}
   groupToggles:
   - {fileID: 1307871857}
   - {fileID: 1005751628}
@@ -1714,7 +1715,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1c0637d82875941f3a9d68f4d3e706fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: tirt.sentinal.InputSystem::Sentinal.InputSystem.ViewInputSystemHandler
-  inputMode: 0
+  inputMode: 3
   viewSelector: {fileID: 1630408056}
   playerKey: 0
 --- !u!114 &1630408061

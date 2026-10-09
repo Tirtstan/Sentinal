@@ -12,6 +12,10 @@ namespace Sentinal.InputSystem.Components
     {
         [Header("Components")]
         [SerializeField]
+        [Tooltip("The tracked view owning these panels. Focus ownership is independent of Transform parenting.")]
+        private ViewSelector focusOwner;
+
+        [SerializeField]
         private Toggle[] groupToggles = Array.Empty<Toggle>();
 
         [SerializeField]
@@ -36,6 +40,20 @@ namespace Sentinal.InputSystem.Components
 
         public int CurrentTabIndex => currentTabIndex;
 
+        public ViewSelector FocusOwner
+        {
+            get => focusOwner;
+            set
+            {
+                if (focusOwner == value)
+                    return;
+                ValidatePanels(value, groupToggles, groupPanels);
+                ReleasePanels();
+                focusOwner = value;
+                BindPanels();
+            }
+        }
+
         public int DefaultTabIndex
         {
             get => defaultTabIndex;
@@ -44,6 +62,8 @@ namespace Sentinal.InputSystem.Components
 
         private void Awake()
         {
+            ValidatePanels(focusOwner, groupToggles, groupPanels);
+            BindPanels();
             TryGetComponent(out toggleGroup);
             SetupToggleGroup();
             SubscribeToToggles();
@@ -52,16 +72,49 @@ namespace Sentinal.InputSystem.Components
                 SelectTab(Mathf.Clamp(defaultTabIndex, 0, groupToggles.Length - 1));
         }
 
-        private void OnDestroy() => UnsubscribeFromToggles();
+        private void OnEnable()
+        {
+            if (groupToggles.Length > 0)
+                SetPanelsActive(currentTabIndex);
+        }
+
+        private void OnDisable() => SetPanelsActive(-1);
+
+        private void OnValidate()
+        {
+            try
+            {
+                ValidatePanels(focusOwner, groupToggles, groupPanels);
+            }
+            catch (InvalidOperationException exception)
+            {
+                Debug.LogError(exception.Message, this);
+            }
+        }
+
+        private void OnDestroy()
+        {
+            UnsubscribeFromToggles();
+            SetPanelsActive(-1);
+            ReleasePanels();
+        }
 
         public void ReplaceTabs(IReadOnlyList<Toggle> toggles, IReadOnlyList<ViewSelector> panels)
         {
-            UnsubscribeFromToggles();
+            Toggle[] replacementToggles = Copy(toggles);
+            ViewSelector[] replacementPanels = Copy(panels);
+            ValidatePanels(focusOwner, replacementToggles, replacementPanels);
 
-            groupToggles = Copy(toggles);
-            groupPanels = Copy(panels);
+            UnsubscribeFromToggles();
+            SetPanelsActive(-1);
+            ReleasePanels();
+
+            groupToggles = replacementToggles;
+            groupPanels = replacementPanels;
             readOnlyToggles = null;
             readOnlyPanels = null;
+
+            BindPanels();
 
             SetupToggleGroup();
             SubscribeToToggles();
@@ -76,6 +129,52 @@ namespace Sentinal.InputSystem.Components
 
             SelectTab(Mathf.Clamp(currentTabIndex, 0, groupToggles.Length - 1));
             TabsChanged?.Invoke();
+        }
+
+        private void BindPanels()
+        {
+            foreach (ViewSelector panel in groupPanels)
+                panel.FocusParent = focusOwner;
+        }
+
+        private void ReleasePanels()
+        {
+            foreach (ViewSelector panel in groupPanels)
+                if (panel != null && panel.FocusParent == focusOwner)
+                    panel.FocusParent = null;
+        }
+
+        private void ValidatePanels(ViewSelector owner, Toggle[] toggles, ViewSelector[] panels)
+        {
+            if (panels.Length == 0)
+                return;
+            if (owner == null || !owner.TrackView)
+                throw new InvalidOperationException(
+                    $"{name} expected a tracked Focus Owner for {panels.Length} panels; actual: {(owner != null ? owner.name + " is untracked" : "missing owner")}."
+                );
+            if (panels.Length != toggles.Length)
+                throw new InvalidOperationException(
+                    $"{name} expected one toggle per panel; actual: {toggles.Length} toggles, {panels.Length} panels."
+                );
+
+            var seen = new HashSet<ViewSelector>();
+            for (int i = 0; i < panels.Length; i++)
+            {
+                ViewSelector panel = panels[i];
+                if (panel == null || toggles[i] == null || !panel.TrackView || panel == owner || !seen.Add(panel))
+                    throw new InvalidOperationException(
+                        $"{name} expected a unique tracked panel and toggle at index {i}, distinct from owner '{owner.name}'; actual: panel={(panel != null ? panel.name : "missing")}, toggle={(toggles[i] != null ? toggles[i].name : "missing")}."
+                    );
+                if (panel.FocusParent != null && panel.FocusParent != owner && panel.FocusParent != focusOwner)
+                    throw new InvalidOperationException(
+                        $"{name} expected panel '{panel.name}' to belong to '{owner.name}'; actual: already owned by '{panel.FocusParent.name}'."
+                    );
+                for (ViewSelector parent = owner; parent != null; parent = parent.FocusParent)
+                    if (parent == panel)
+                        throw new InvalidOperationException(
+                            $"{name} expected panel '{panel.name}' outside the owner chain of '{owner.name}'; actual: ownership would form a cycle."
+                        );
+            }
         }
 
         public void Next(bool wrap)
@@ -102,6 +201,28 @@ namespace Sentinal.InputSystem.Components
             SelectTab(previousIndex);
         }
 
+        /// <summary>Selects an authored panel. Can be wired directly to a Button's onClick event.</summary>
+        public void SelectTab(ViewSelector panel)
+        {
+            if (panel == null)
+                throw new ArgumentNullException(
+                    nameof(panel),
+                    $"{name} expected an authored tab panel; actual: missing panel."
+                );
+
+            int index = Array.IndexOf(groupPanels, panel);
+            if (index < 0)
+                throw new ArgumentException(
+                    $"{name} expected panel '{panel.name}' in its {groupPanels.Length} registered panels; actual: panel is not registered.",
+                    nameof(panel)
+                );
+
+            if (!SelectTab(index))
+                throw new InvalidOperationException(
+                    $"{name} expected a toggle for panel '{panel.name}' at index {index}; actual: selection rejected with {groupToggles.Length} toggles."
+                );
+        }
+
         public bool SelectTab(int index)
         {
             if (index < 0 || index >= groupToggles.Length)
@@ -113,6 +234,8 @@ namespace Sentinal.InputSystem.Components
                 toggle.isOn = true;
 
             SetPanelsActive(index);
+            if (SentinalViewRouter.IsFocusWithin(focusOwner))
+                SentinalViewRouter.TrySelectCurrentView();
             return true;
         }
 

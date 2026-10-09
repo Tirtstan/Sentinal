@@ -168,7 +168,9 @@ namespace Sentinal.Editor
                 return;
             }
 
-            statusLabel.text = $"Connected | Views: {SentinalViewRouter.ViewCount}";
+            ViewSelector window = SentinalViewRouter.CurrentWindow;
+            statusLabel.text =
+                $"Connected | Views: {SentinalViewRouter.ViewCount} | Window: {(window != null ? window.name : "None")}";
             statusLabel.style.color = new Color(0.39f, 0.76f, 0.45f);
 
             RefreshViewStack();
@@ -289,9 +291,9 @@ namespace Sentinal.Editor
                     }
                 );
 
-                string parentName = view.transform.parent != null ? view.transform.parent.name : "None";
+                string parentName = view.FocusParent != null ? view.FocusParent.name : "Window";
                 titleRow.Add(
-                    new Label($" (Parent: {parentName})")
+                    new Label($" (Focus owner: {parentName})")
                     {
                         style =
                         {
