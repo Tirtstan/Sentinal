@@ -1,4 +1,6 @@
+using System;
 using System.Collections;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -17,7 +19,15 @@ namespace Sentinal
 
         [Header("View")]
         [SerializeField]
-        [Tooltip("Priority for focus selection. Higher priority views get focus first. Equal priority uses recency.")]
+        [Tooltip(
+            "Optional focus owner. Owned panels resolve inside this view instead of competing with independent windows. TabbedView assigns this for its panels."
+        )]
+        private ViewSelector focusParent;
+
+        [SerializeField]
+        [Tooltip(
+            "Priority among views with the same focus parent. Independent windows compete globally; owned panels compete only within their owner. Equal priority uses recency."
+        )]
         private int priority = 0;
 
         [SerializeField]
@@ -106,9 +116,8 @@ namespace Sentinal
                 if (priority == value)
                     return;
 
-                ViewSelector previousFocusedView = SentinalViewRouter.CurrentView;
                 priority = value;
-                SentinalViewRouter.NotifyConfigurationChanged(previousFocusedView);
+                SentinalViewRouter.NotifyConfigurationChanged();
             }
         }
         public bool RootView
@@ -119,9 +128,8 @@ namespace Sentinal
                 if (rootView == value)
                     return;
 
-                ViewSelector previousFocusedView = SentinalViewRouter.CurrentView;
                 rootView = value;
-                SentinalViewRouter.NotifyConfigurationChanged(previousFocusedView);
+                SentinalViewRouter.NotifyConfigurationChanged();
             }
         }
         public ViewGroupMask GroupMask
@@ -132,9 +140,8 @@ namespace Sentinal
                 if (groupMask == value)
                     return;
 
-                ViewSelector previousFocusedView = SentinalViewRouter.CurrentView;
                 groupMask = value;
-                SentinalViewRouter.NotifyConfigurationChanged(previousFocusedView);
+                SentinalViewRouter.NotifyConfigurationChanged();
             }
         }
         public bool ExclusiveView
@@ -188,7 +195,45 @@ namespace Sentinal
             get => selectOnEnable;
             set => selectOnEnable = value;
         }
+
+        /// <summary>The explicit focus owner. Transform parenting does not establish focus ownership.</summary>
+        public ViewSelector FocusParent
+        {
+            get => focusParent;
+            set
+            {
+                if (ReferenceEquals(focusParent, value))
+                    return;
+
+                ValidateFocusParent(value);
+                focusParent = value;
+                SentinalViewRouter.NotifyConfigurationChanged();
+            }
+        }
+
+        public ViewSelector FocusWindow =>
+            ReferenceEquals(focusParent, null)
+                ? this
+                : focusParent != null
+                    ? focusParent.FocusWindow
+                    : null;
+
         public bool IsActive => gameObject.activeInHierarchy;
+
+        private void ValidateFocusParent(ViewSelector parent)
+        {
+            var owners = new HashSet<ViewSelector>();
+            for (ViewSelector owner = parent; owner != null; owner = owner.FocusParent)
+                if (owner == this || !owners.Add(owner))
+                    throw new InvalidOperationException(
+                        $"{name} expected an acyclic focus owner chain; actual: assigning '{parent.name}' would create a cycle."
+                    );
+
+            if (parent != null && (!trackView || !parent.TrackView))
+                throw new InvalidOperationException(
+                    $"{name} expected both owned panel and focus parent '{parent.name}' to be tracked; actual: panel={trackView}, parent={parent.TrackView}."
+                );
+        }
 
         private GameObject lastSelected;
         private bool isQuitting;
@@ -200,8 +245,21 @@ namespace Sentinal
             SentinalViewRouter.OnSwitch += OnSwitch;
         }
 
+        private void OnValidate()
+        {
+            try
+            {
+                ValidateFocusParent(focusParent);
+            }
+            catch (InvalidOperationException exception)
+            {
+                Debug.LogError(exception.Message, this);
+            }
+        }
+
         private void OnEnable()
         {
+            ValidateFocusParent(focusParent);
             if (address != null)
                 ViewAddressRegistry.Register(address, this);
 
@@ -421,7 +479,7 @@ namespace Sentinal
             yield return null;
 
             selectOnEnableCoroutine = null;
-            if (!isActiveAndEnabled)
+            if (!isActiveAndEnabled || (trackView && !IsCurrent()))
                 yield break;
 
             Select();

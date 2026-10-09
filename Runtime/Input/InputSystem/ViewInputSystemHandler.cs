@@ -28,7 +28,12 @@ namespace Sentinal.InputSystem
         LocalActive,
 
         [Tooltip("Input is always enabled as long as this component is enabled.")]
-        Always
+        Always,
+
+        [Tooltip(
+            "Input is enabled while this view or an explicitly owned panel is focused. Independent modals suspend it."
+        )]
+        FocusWithin,
     }
 
     [AddComponentMenu("Sentinal/View Input System Handler"), DisallowMultipleComponent]
@@ -120,8 +125,7 @@ namespace Sentinal.InputSystem
 
             SentinalViewRouter.OnSwitch -= OnViewSwitch;
 
-            if (inputMode == HandlerInputMode.LocalActive)
-                DisableInput();
+            DisableInput();
         }
 
         private void OnPlayerRoleChanged(int key, PlayerInput newPlayer)
@@ -158,7 +162,7 @@ namespace Sentinal.InputSystem
 
         private void OnViewSwitch(ViewSelector previousView, ViewSelector newView)
         {
-            if (inputMode == HandlerInputMode.GlobalFocus)
+            if (inputMode == HandlerInputMode.GlobalFocus || inputMode == HandlerInputMode.FocusWithin)
                 EvaluateInputState();
         }
 
@@ -180,6 +184,12 @@ namespace Sentinal.InputSystem
                     break;
                 case HandlerInputMode.LocalActive:
                     if (viewSelector != null && viewSelector.IsActive)
+                        EnableInput();
+                    else
+                        DisableInput();
+                    break;
+                case HandlerInputMode.FocusWithin:
+                    if (SentinalViewRouter.IsFocusWithin(viewSelector))
                         EnableInput();
                     else
                         DisableInput();
