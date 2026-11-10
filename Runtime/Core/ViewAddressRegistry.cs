@@ -16,15 +16,15 @@ namespace Sentinal
     /// </summary>
     public static class ViewAddressRegistry
     {
-        private static readonly Dictionary<ViewAddress, ViewSelector> registry = new();
+        private static readonly Dictionary<ViewAddress, SentinalView> registry = new();
 #if SENTINAL_ADDRESSABLES
-        private static readonly Dictionary<ViewAddress, Task<ViewSelector>> pendingAddressableResolutions = new();
+        private static readonly Dictionary<ViewAddress, Task<SentinalView>> pendingAddressableResolutions = new();
 #endif
 
         /// <summary>
         /// Registers a view for the given address key. First registration wins.
         /// </summary>
-        public static void Register(ViewAddress key, ViewSelector view)
+        public static void Register(ViewAddress key, SentinalView view)
         {
             if (key == null || view == null)
                 return;
@@ -47,9 +47,9 @@ namespace Sentinal
         /// <summary>
         /// Unregisters the key only when it still belongs to the given view.
         /// </summary>
-        public static void Unregister(ViewAddress key, ViewSelector view)
+        public static void Unregister(ViewAddress key, SentinalView view)
         {
-            if (key != null && registry.TryGetValue(key, out ViewSelector registeredView) && registeredView == view)
+            if (key != null && registry.TryGetValue(key, out SentinalView registeredView) && registeredView == view)
             {
                 registry.Remove(key);
             }
@@ -59,7 +59,7 @@ namespace Sentinal
         /// Gets an existing scene view for the address, or instantiates its configured direct prefab.
         /// Addressable prefabs must be resolved with <see cref="ResolveAsync"/>.
         /// </summary>
-        public static ViewSelector Resolve(ViewAddress key)
+        public static SentinalView Resolve(ViewAddress key)
         {
             if (key == null)
             {
@@ -67,7 +67,7 @@ namespace Sentinal
                 return null;
             }
 
-            ViewSelector view = FindExistingView(key);
+            SentinalView view = FindExistingView(key);
             if (view != null)
                 return view;
 
@@ -82,7 +82,7 @@ namespace Sentinal
                     return null;
                 }
 
-                ViewSelector instance = UnityEngine.Object.Instantiate(key.FallbackPrefab);
+                SentinalView instance = UnityEngine.Object.Instantiate(key.FallbackPrefab);
                 return ValidateDirectInstance(key, instance);
             }
 
@@ -94,15 +94,15 @@ namespace Sentinal
         /// Gets an existing scene view for the address, or asynchronously instantiates its configured prefab source.
         /// Concurrent Addressable requests for the same address share one instantiation operation.
         /// </summary>
-        public static Task<ViewSelector> ResolveAsync(ViewAddress key)
+        public static Task<SentinalView> ResolveAsync(ViewAddress key)
         {
             if (key == null)
             {
                 Debug.LogWarning("[Sentinal] Cannot resolve a null ViewAddress.");
-                return Task.FromResult<ViewSelector>(null);
+                return Task.FromResult<SentinalView>(null);
             }
 
-            ViewSelector view = FindExistingView(key);
+            SentinalView view = FindExistingView(key);
             if (view != null)
                 return Task.FromResult(view);
 
@@ -112,7 +112,7 @@ namespace Sentinal
             if (key.PrefabSource != ViewAddressPrefabSource.AddressablePrefab)
             {
                 LogUnresolvedAddress(key, isAddressableSource: false);
-                return Task.FromResult<ViewSelector>(null);
+                return Task.FromResult<SentinalView>(null);
             }
 
 #if SENTINAL_ADDRESSABLES
@@ -122,13 +122,13 @@ namespace Sentinal
                     $"[Sentinal] ViewAddress '{key.name}' is set to {nameof(ViewAddressPrefabSource.AddressablePrefab)}, but no valid {nameof(key.AddressablePrefab)} is assigned.",
                     key
                 );
-                return Task.FromResult<ViewSelector>(null);
+                return Task.FromResult<SentinalView>(null);
             }
 
-            if (pendingAddressableResolutions.TryGetValue(key, out Task<ViewSelector> pendingResolution))
+            if (pendingAddressableResolutions.TryGetValue(key, out Task<SentinalView> pendingResolution))
                 return pendingResolution;
 
-            var completion = new TaskCompletionSource<ViewSelector>();
+            var completion = new TaskCompletionSource<SentinalView>();
             pendingAddressableResolutions[key] = completion.Task;
             InstantiateAddressableAsync(key, completion);
             return completion.Task;
@@ -137,7 +137,7 @@ namespace Sentinal
                 $"[Sentinal] ViewAddress '{key.name}' is set to {nameof(ViewAddressPrefabSource.AddressablePrefab)}, but Addressables support is unavailable. Install com.unity.addressables to enable it.",
                 key
             );
-            return Task.FromResult<ViewSelector>(null);
+            return Task.FromResult<SentinalView>(null);
 #endif
         }
 
@@ -153,10 +153,10 @@ namespace Sentinal
         /// </summary>
         public static void PrewarmLoadedSceneViews()
         {
-            var loadedViews = Resources.FindObjectsOfTypeAll<ViewSelector>();
+            var loadedViews = Resources.FindObjectsOfTypeAll<SentinalView>();
             for (int i = 0; i < loadedViews.Length; i++)
             {
-                ViewSelector view = loadedViews[i];
+                SentinalView view = loadedViews[i];
                 if (view == null || view.Address == null)
                     continue;
 
@@ -168,12 +168,12 @@ namespace Sentinal
             }
         }
 
-        private static ViewSelector FindLoadedSceneViewByAddress(ViewAddress key)
+        private static SentinalView FindLoadedSceneViewByAddress(ViewAddress key)
         {
-            var loadedViews = Resources.FindObjectsOfTypeAll<ViewSelector>();
+            var loadedViews = Resources.FindObjectsOfTypeAll<SentinalView>();
             for (int i = 0; i < loadedViews.Length; i++)
             {
-                ViewSelector candidate = loadedViews[i];
+                SentinalView candidate = loadedViews[i];
                 if (candidate == null || candidate.Address != key)
                     continue;
 
@@ -187,9 +187,9 @@ namespace Sentinal
             return null;
         }
 
-        private static ViewSelector FindExistingView(ViewAddress key)
+        private static SentinalView FindExistingView(ViewAddress key)
         {
-            if (registry.TryGetValue(key, out ViewSelector view) && view != null)
+            if (registry.TryGetValue(key, out SentinalView view) && view != null)
                 return view;
 
             registry.Remove(key);
@@ -203,14 +203,14 @@ namespace Sentinal
             return view;
         }
 
-        private static ViewSelector ValidateDirectInstance(ViewAddress key, ViewSelector instance)
+        private static SentinalView ValidateDirectInstance(ViewAddress key, SentinalView instance)
         {
             if (instance != null && instance.Address == key)
                 return instance;
 
             string actualAddress = instance != null && instance.Address != null ? instance.Address.name : "none";
             Debug.LogError(
-                $"[Sentinal] Direct fallback prefab for address '{key.name}' must contain a {nameof(ViewSelector)} assigned to that same address. Actual address: {actualAddress}.",
+                $"[Sentinal] Direct fallback prefab for address '{key.name}' must contain a {nameof(SentinalView)} assigned to that same address. Actual address: {actualAddress}.",
                 key
             );
 
@@ -230,7 +230,7 @@ namespace Sentinal
         }
 
 #if SENTINAL_ADDRESSABLES
-        private static void InstantiateAddressableAsync(ViewAddress key, TaskCompletionSource<ViewSelector> completion)
+        private static void InstantiateAddressableAsync(ViewAddress key, TaskCompletionSource<SentinalView> completion)
         {
             try
             {
@@ -251,7 +251,7 @@ namespace Sentinal
         private static void CompleteAddressableInstantiation(
             ViewAddress key,
             AsyncOperationHandle<GameObject> operation,
-            TaskCompletionSource<ViewSelector> completion
+            TaskCompletionSource<SentinalView> completion
         )
         {
             pendingAddressableResolutions.Remove(key);
@@ -267,11 +267,11 @@ namespace Sentinal
                 return;
             }
 
-            if (!operation.Result.TryGetComponent(out ViewSelector instance) || instance.Address != key)
+            if (!operation.Result.TryGetComponent(out SentinalView instance) || instance.Address != key)
             {
                 string actualAddress = instance != null && instance.Address != null ? instance.Address.name : "none";
                 Debug.LogError(
-                    $"[Sentinal] Addressable fallback for address '{key.name}' must contain a {nameof(ViewSelector)} assigned to that same address. Actual address: {actualAddress}.",
+                    $"[Sentinal] Addressable fallback for address '{key.name}' must contain a {nameof(SentinalView)} assigned to that same address. Actual address: {actualAddress}.",
                     key
                 );
                 UnityEngine.AddressableAssets.Addressables.ReleaseInstance(operation.Result);
@@ -309,7 +309,7 @@ namespace Sentinal
             foreach (var pair in registry)
             {
                 ViewAddress key = pair.Key;
-                ViewSelector view = pair.Value;
+                SentinalView view = pair.Value;
                 string keyName = key != null ? key.name : "null";
                 string viewName = view != null ? view.name : "null";
                 string sceneName = view != null ? view.gameObject.scene.name : "n/a";

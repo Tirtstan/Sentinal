@@ -38,7 +38,10 @@ namespace Sentinal.InputSystem.Components
 
         private void OnActionPerformed(InputAction.CallbackContext context)
         {
-            if (!ValidateFreshPress(isCancelEvent: false) || !CanInteract)
+            if (IsEditingText(context))
+                return;
+
+            if (!ValidateFreshPress(context) || !CanInteract)
                 return;
 
             if (sendPointerEvents)
@@ -59,7 +62,10 @@ namespace Sentinal.InputSystem.Components
 
         private void OnActionCanceled(InputAction.CallbackContext context)
         {
-            if (!ValidateFreshPress(isCancelEvent: true))
+            if (IsEditingText(context))
+                return;
+
+            if (!ValidateFreshPress(context))
                 return;
 
             if (sendPointerEvents)
@@ -76,6 +82,15 @@ namespace Sentinal.InputSystem.Components
 
             if (triggerOnRelease)
                 Click();
+        }
+
+        private bool IsEditingText(InputAction.CallbackContext context)
+        {
+            if (context.control.device is not Keyboard || eventSystem == null)
+                return false;
+
+            GameObject selected = eventSystem.currentSelectedGameObject;
+            return selected != null && selected.TryGetComponent(out TMPro.TMP_InputField field) && field.isFocused;
         }
     }
 }

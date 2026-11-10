@@ -5,8 +5,9 @@ using UnityEngine.InputSystem;
 
 namespace Sentinal.InputSystem.Components
 {
+    /// <summary>Shows a binding of its player's action as text. The player follows <see cref="ViewPlayerComponent"/>.</summary>
     [RequireComponent(typeof(TextMeshProUGUI))]
-    public class DisplayInputString : ViewInputSystemComponent
+    public class DisplayInputString : ViewPlayerComponent
     {
         [Header("Action")]
         [SerializeField]
@@ -83,32 +84,66 @@ namespace Sentinal.InputSystem.Components
             }
         }
 
-        protected override void Awake()
+        private PlayerInput controlsSource;
+
+        private void Awake()
         {
-            base.Awake();
             text = GetComponent<TextMeshProUGUI>();
         }
 
-        protected override void OnPlayerInputRefreshed()
+        protected override void OnEnable()
         {
-            base.OnPlayerInputRefreshed();
+            base.OnEnable();
+            WatchControls(Player);
             UpdateDisplay();
         }
 
-        protected override void OnPlayerInputChanged(PlayerInput newPlayerInput)
+        protected override void OnDisable()
         {
-            base.OnPlayerInputChanged(newPlayerInput);
+            WatchControls(null);
+            base.OnDisable();
+        }
+
+        protected override void OnPlayerChanged(PlayerInput previous, PlayerInput current)
+        {
+            if (isActiveAndEnabled)
+                WatchControls(current);
+
             UpdateDisplay();
         }
 
-        protected override void OnControlsChanged(PlayerInput input)
+        private void WatchControls(PlayerInput source)
         {
-            base.OnControlsChanged(input);
-            UpdateDisplay();
+            if (controlsSource == source)
+                return;
+
+            if (controlsSource != null)
+            {
+                controlsSource.onControlsChanged -= OnControlsChanged;
+                controlsSource.controlsChangedEvent.RemoveListener(OnControlsChanged);
+            }
+
+            controlsSource = source;
+            if (controlsSource == null)
+                return;
+
+            PlayerNotifications behavior = controlsSource.notificationBehavior;
+            if (behavior == PlayerNotifications.InvokeCSharpEvents)
+                controlsSource.onControlsChanged += OnControlsChanged;
+            else if (behavior == PlayerNotifications.InvokeUnityEvents)
+                controlsSource.controlsChangedEvent.AddListener(OnControlsChanged);
+            else
+                Debug.LogError(
+                    $"{nameof(DisplayInputString)} expected PlayerInput notificationBehavior InvokeCSharpEvents or InvokeUnityEvents; actual: {behavior}.",
+                    controlsSource
+                );
         }
+
+        private void OnControlsChanged(PlayerInput input) => UpdateDisplay();
 
         public void UpdateDisplay()
         {
+            PlayerInput playerInput = Player;
             if (playerInput == null || text == null)
                 return;
 

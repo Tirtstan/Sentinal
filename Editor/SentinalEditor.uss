@@ -1,0 +1,273 @@
+/* Tokens. The root carries .sentinal-dark or .sentinal-light. */
+.sentinal-dark {
+    --s-text: rgb(240, 240, 240);
+    --s-text-soft: rgb(196, 198, 202);
+    --s-label: rgb(168, 170, 174);
+    --s-faint: rgb(128, 130, 134);
+    --s-bar: rgb(51, 52, 55);
+    --s-bar-button: rgb(62, 63, 67);
+    --s-line: rgb(32, 33, 35);
+    --s-sep: rgb(82, 84, 89);
+    --s-hover: rgb(56, 58, 62);
+    --s-slab: rgb(68, 69, 73);
+    --s-slab-hover: rgb(78, 80, 85);
+    --s-tag: rgb(45, 46, 49);
+    --s-focus-bg: rgb(56, 70, 88);
+    --s-focus-hover: rgb(66, 82, 102);
+    --s-tag-on: rgb(43, 74, 112);
+    --s-tag-on-text: rgb(207, 226, 255);
+    --s-open: rgb(124, 208, 146);
+    --s-focus: rgb(106, 169, 255);
+    --s-moving: rgb(232, 169, 78);
+    --s-idle: rgb(138, 140, 144);
+    --s-open-text: rgb(143, 220, 164);
+    --s-focus-text: rgb(147, 199, 240);
+    --s-moving-text: rgb(240, 179, 92);
+    --s-warning-text: rgb(244, 150, 110);
+    --s-link: rgb(147, 199, 240);
+}
+
+.sentinal-light {
+    --s-text: rgb(20, 20, 20);
+    --s-text-soft: rgb(50, 50, 52);
+    --s-label: rgb(78, 80, 84);
+    --s-faint: rgb(110, 112, 116);
+    --s-bar: rgb(214, 214, 214);
+    --s-bar-button: rgb(228, 228, 228);
+    --s-line: rgb(170, 170, 170);
+    --s-sep: rgb(188, 188, 190);
+    --s-hover: rgb(208, 210, 214);
+    --s-slab: rgb(228, 228, 230);
+    --s-slab-hover: rgb(216, 218, 222);
+    --s-tag: rgb(202, 202, 206);
+    --s-focus-bg: rgb(204, 220, 238);
+    --s-focus-hover: rgb(190, 210, 232);
+    --s-tag-on: rgb(58, 114, 176);
+    --s-tag-on-text: rgb(255, 255, 255);
+    --s-open: rgb(46, 150, 72);
+    --s-focus: rgb(40, 116, 200);
+    --s-moving: rgb(196, 124, 10);
+    --s-idle: rgb(120, 120, 120);
+    --s-open-text: rgb(28, 112, 46);
+    --s-focus-text: rgb(26, 92, 170);
+    --s-moving-text: rgb(150, 88, 0);
+    --s-warning-text: rgb(176, 64, 20);
+    --s-link: rgb(26, 92, 170);
+}
+
+/* Shared */
+.sentinal-hidden { display: none; }
+
+/* Tones: green is open, blue has focus, amber is mid-transition, grey is covered or idle. */
+.sentinal-tone--open { color: var(--s-open-text); }
+.sentinal-tone--focus { color: var(--s-focus-text); }
+.sentinal-tone--transition { color: var(--s-moving-text); }
+.sentinal-tone--hidden { color: var(--s-label); }
+.sentinal-tone--idle { color: var(--s-label); }
+.sentinal-tone--warning { color: var(--s-warning-text); }
+
+.sentinal-square { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; background-color: var(--s-idle); }
+.sentinal-square.sentinal-tone--open { background-color: var(--s-open); }
+.sentinal-square.sentinal-tone--focus { background-color: var(--s-focus); }
+.sentinal-square.sentinal-tone--transition { background-color: var(--s-moving); }
+.sentinal-square.sentinal-tone--hidden { background-color: rgba(0, 0, 0, 0); border-width: 1px; border-color: var(--s-idle); }
+.sentinal-square.sentinal-tone--idle { background-color: var(--s-idle); }
+.sentinal-square.sentinal-tone--warning { background-color: var(--s-warning-text); }
+
+.sentinal-muted { color: var(--s-label); white-space: normal; padding: 0; margin: 0; }
+.sentinal-clip { flex-shrink: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0; margin: 0; }
+
+.sentinal-link-row {
+    flex-direction: row;
+    align-items: center;
+    min-height: 20px;
+    padding: 0 4px;
+    border-radius: 3px;
+}
+.sentinal-link-row:hover { background-color: var(--s-hover); }
+
+.sentinal-link { color: var(--s-link); border-bottom-width: 1px; border-color: var(--s-link); padding: 0; margin: 0; cursor: link; }
+.sentinal-link:hover { color: var(--s-text); border-color: var(--s-text); }
+
+/* Component status: inline facts share one quiet strip, wrapping as whole cells in narrow inspectors. */
+.sentinal-status, .sentinal-status-panel {
+    overflow: hidden;
+    margin: 2px 0 4px 0;
+    background-color: var(--s-bar);
+    border-width: 1px;
+    border-color: var(--s-line);
+    border-radius: 3px;
+}
+.sentinal-status { flex-direction: row; flex-wrap: wrap; padding: 1px 0; }
+.sentinal-status-panel > .sentinal-status { margin: 0; border-width: 0; border-bottom-width: 1px; border-color: var(--s-sep); border-radius: 0; }
+.sentinal-fact {
+    flex-direction: row;
+    align-items: center;
+    flex-grow: 1;
+    flex-shrink: 1;
+    flex-basis: auto;
+    min-width: 0;
+    max-width: 100%;
+    min-height: 22px;
+    padding: 0 8px;
+    margin-left: -1px;
+    border-left-width: 1px;
+    border-color: var(--s-sep);
+}
+.sentinal-fact__key { font-size: 11px; color: var(--s-label); margin-right: 7px; }
+.sentinal-fact > .sentinal-square { width: 6px; height: 6px; margin-right: 5px; }
+.sentinal-fact__text { font-size: 12px; -unity-font-style: bold; }
+.sentinal-fact__text.sentinal-tone--idle { color: var(--s-text-soft); }
+.sentinal-fact > .sentinal-link { font-size: 12px; margin-left: 4px; }
+.sentinal-fact__note { font-size: 11px; color: var(--s-label); margin-left: 6px; }
+.sentinal-answers__note { color: var(--s-text-soft); font-size: 11px; white-space: normal; padding: 4px 8px; margin: 0; }
+.sentinal-answers__note--warning { color: var(--s-warning-text); }
+.sentinal-answer--layer { cursor: link; }
+.sentinal-answer--layer:hover { background-color: var(--s-hover); }
+.sentinal-answers__note--layer { cursor: link; }
+.sentinal-answers__note--layer:hover { color: var(--s-text); }
+.sentinal-actions { flex-direction: row; margin: 3px 0; }
+.sentinal-view-fields { margin-top: 0; }
+.sentinal-segment { flex-direction: row; flex-shrink: 0; }
+.sentinal-segment > Button { margin: 0; border-radius: 0; border-left-width: 0; min-width: 52px; height: 22px; }
+.sentinal-segment > .sentinal-first { border-left-width: 1px; border-top-left-radius: 3px; border-bottom-left-radius: 3px; }
+.sentinal-segment > .sentinal-last { border-top-right-radius: 3px; border-bottom-right-radius: 3px; }
+
+/* Project Settings */
+.sentinal-settings { padding: 1px 9px 16px 9px; font-size: 13px; }
+.sentinal-title { font-size: 19px; -unity-font-style: bold; color: var(--s-text); margin: 0 0 2px 0; padding: 0; }
+.sentinal-section { margin-top: 16px; max-width: 880px; }
+.sentinal-section__title { font-size: 14px; -unity-font-style: bold; color: var(--s-text); padding: 0; margin: 0 0 2px 0; }
+.sentinal-section .sentinal-muted { margin-bottom: 6px; }
+
+.sentinal-table__header { flex-direction: row; padding: 0 3px 3px 4px; }
+.sentinal-table__header > Label { color: var(--s-label); padding: 0 0 0 4px; margin: 0 6px 0 0; }
+.sentinal-table__row { flex-direction: row; align-items: center; min-height: 26px; padding: 1px 3px 1px 3px; }
+.sentinal-table__row--revealed { background-color: var(--s-focus-hover); }
+.sentinal-table__row .unity-base-field { margin: 0 6px 0 0; }
+.sentinal-table__row Foldout { margin: 0 6px 0 0; }
+.sentinal-table__row Toggle { margin: 0; }
+.sentinal-table__below { margin: 0 0 6px 25px; }
+.sentinal-col { flex-shrink: 0; margin: 0 6px 0 0; }
+.sentinal-col--toggle { width: 16px; }
+.sentinal-col--grow { flex-grow: 1; flex-shrink: 1; flex-basis: 0; min-width: 100px; }
+.sentinal-col--others { width: 150px; }
+.sentinal-col--back { width: 125px; }
+.sentinal-col--input { width: 125px; }
+.sentinal-col--asset { width: 190px; }
+.sentinal-col--map { width: 130px; }
+
+/* Monitor window */
+.sentinal-monitor { flex-grow: 1; font-size: 13px; color: var(--s-text); }
+
+.sentinal-bar {
+    flex-direction: row;
+    align-items: stretch;
+    flex-shrink: 0;
+    height: 30px;
+    background-color: var(--s-bar);
+    border-bottom-width: 1px;
+    border-color: var(--s-line);
+}
+.sentinal-bar__authority { flex-direction: row; align-items: center; flex-grow: 1; flex-shrink: 1; min-width: 0; padding: 0 10px; }
+.sentinal-bar__who { -unity-font-style: bold; color: var(--s-text); flex-shrink: 0; padding: 0; margin: 0 6px 0 8px; }
+.sentinal-bar__why { color: var(--s-text-soft); }
+.sentinal-bar__button {
+    flex-shrink: 0;
+    margin: 0;
+    padding: 0 12px;
+    border-width: 0;
+    border-left-width: 1px;
+    border-radius: 0;
+    border-color: var(--s-line);
+    background-color: var(--s-bar-button);
+    color: var(--s-text);
+}
+.sentinal-bar__button:hover { background-color: var(--s-hover); }
+.sentinal-bar__button:disabled { color: var(--s-faint); }
+
+.sentinal-monitor__empty { padding: 12px 14px; }
+
+/* A stack: front of the screen at the top, behind at the bottom. */
+.sentinal-stack { flex-direction: row; padding: 12px 12px 6px 0; }
+.sentinal-rail { width: 46px; flex-shrink: 0; align-items: center; padding-bottom: 6px; }
+.sentinal-rail > Label { font-size: 10px; color: var(--s-faint); padding: 0; margin: 0; }
+.sentinal-rail__line { flex-grow: 1; width: 1px; margin: 4px 0; background-color: var(--s-sep); }
+.sentinal-monitor--narrow .sentinal-rail { display: none; }
+.sentinal-monitor--narrow .sentinal-stack { padding-left: 10px; padding-right: 10px; }
+.sentinal-slabs { flex-grow: 1; flex-shrink: 1; min-width: 0; }
+
+/* One window. The left edge carries its tone; a covered window sits indented under what covers it. */
+.sentinal-slab {
+    padding: 4px 4px 5px 8px;
+    margin-bottom: 6px;
+    background-color: var(--s-slab);
+    border-width: 1px;
+    border-left-width: 3px;
+    border-color: var(--s-line);
+    border-left-color: var(--s-open);
+    border-radius: 3px;
+}
+.sentinal-slab--moving { border-left-color: var(--s-moving); }
+.sentinal-slab--focus { background-color: var(--s-focus-bg); border-left-color: var(--s-focus); }
+.sentinal-slab--covered { margin-left: 18px; background-color: rgba(0, 0, 0, 0); border-color: var(--s-sep); border-left-color: var(--s-idle); }
+
+.sentinal-view { flex-direction: row; align-items: center; min-height: 24px; padding-left: 2px; border-radius: 2px; }
+.sentinal-view:hover { background-color: var(--s-slab-hover); }
+.sentinal-slab--focus .sentinal-view:hover { background-color: var(--s-focus-hover); }
+.sentinal-slab--covered .sentinal-view:hover { background-color: var(--s-hover); }
+.sentinal-view__holder { flex-shrink: 1; min-width: 24px; color: var(--s-label); margin-right: 5px; }
+.sentinal-view__name { flex-grow: 1; flex-shrink: 1; min-width: 30px; -unity-font-style: bold; color: var(--s-text); }
+.sentinal-slab--covered .sentinal-view__name { color: var(--s-label); }
+.sentinal-view__state { flex-shrink: 1; min-width: 0; -unity-text-align: middle-right; margin-left: 8px; }
+.sentinal-view__layer { flex-shrink: 0; color: var(--s-label); margin-left: 8px; }
+.sentinal-monitor--narrow .sentinal-view__layer { display: none; }
+.sentinal-view__close {
+    width: 22px;
+    height: 22px;
+    margin: 0 0 0 4px;
+    padding: 0;
+    border-width: 0;
+    background-color: rgba(0, 0, 0, 0);
+    color: var(--s-faint);
+    font-size: 14px;
+}
+.sentinal-view__close:hover { color: var(--s-text); background-color: var(--s-bar-button); }
+
+/* Tags pin a fact to the view it is about: focus, what Back does here, whose action map it sets. */
+.sentinal-tags { flex-direction: row; flex-wrap: wrap; padding: 2px 0 0 2px; }
+.sentinal-tag {
+    font-size: 11px;
+    padding: 1px 7px 2px 7px;
+    margin: 0 5px 3px 0;
+    border-radius: 8px;
+    background-color: var(--s-tag-on);
+    color: var(--s-tag-on-text);
+}
+
+/* Tabs: plain words; the selected one is bright and underlined, the one holding focus is underlined in blue. */
+.sentinal-tabs { flex-direction: row; flex-wrap: wrap; padding: 0 0 2px 2px; }
+.sentinal-tab { font-size: 12px; padding: 1px 0 2px 0; margin: 0 12px 0 0; color: var(--s-faint); border-bottom-width: 1px; border-color: rgba(0, 0, 0, 0); }
+.sentinal-tab:hover { color: var(--s-text); }
+.sentinal-tab--selected { color: var(--s-text); border-color: var(--s-text-soft); }
+.sentinal-tab--focused { border-color: var(--s-focus); }
+.sentinal-tab--more:hover { color: var(--s-faint); }
+
+.sentinal-footnote { font-size: 11px; color: var(--s-faint); padding: 0 2px 4px 2px; white-space: normal; }
+
+/* One line per local player, with that player's own stack under it when they have views open. */
+.sentinal-player {
+    flex-direction: row;
+    align-items: center;
+    flex-shrink: 0;
+    min-height: 34px;
+    padding: 0 12px;
+    background-color: var(--s-bar);
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-color: var(--s-line);
+    margin-bottom: -1px;
+}
+.sentinal-player__name { -unity-font-style: bold; color: var(--s-text); flex-shrink: 0; margin: 0 8px 0 8px; }
+.sentinal-player__detail { flex-grow: 1; color: var(--s-text-soft); }
+.sentinal-player > Button { flex-shrink: 0; margin: 0 0 0 8px; height: 22px; }

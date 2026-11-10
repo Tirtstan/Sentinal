@@ -1,72 +1,67 @@
 using Sentinal.Input;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 namespace Sentinal.Editor.Input
 {
-    [CustomEditor(typeof(PromptedTextField))]
-    [CanEditMultipleObjects]
-    public class PromptedTextFieldEditor : UnityEditor.Editor
+    [CustomEditor(typeof(PromptedTextField)), CanEditMultipleObjects]
+    public sealed class PromptedTextFieldEditor : UnityEditor.Editor
     {
-        public override void OnInspectorGUI()
+        public override VisualElement CreateInspectorGUI()
         {
-            serializedObject.Update();
+            VisualElement root = SentinalEditorUI.Root();
+            VisualElement strip = SentinalEditorUI.Status(root);
+            var state = new StatusFact(strip, "Prompt", showTone: true);
+            var activity = new StatusFact(strip, "Presenter");
+            SentinalEditorUI.DefaultFields(root, serializedObject);
 
-            var field = (PromptedTextField)target;
-
-            if (Application.isPlaying)
+            void Refresh()
             {
-                string gatewayStatus = TextInputGateway.IsAvailable ? "GATEWAY: ONLINE" : "GATEWAY: OFFLINE";
-                Color gatewayColor = TextInputGateway.IsAvailable ? EditorColors.Connected : EditorColors.Offline;
-
-                if (TextInputGateway.IsAvailable && TextInputGateway.IsShowing)
+                if (target == null)
+                    return;
+                if (serializedObject.isEditingMultipleObjects)
                 {
-                    gatewayStatus += " | PROMPT OPEN";
-                    gatewayColor = EditorColors.Caution;
+                    state.Set($"{targets.Length} selected");
+                    activity.AddToClassList("sentinal-hidden");
+                    return;
+                }
+                if (!Application.isPlaying)
+                {
+                    state.Set("Opens on click");
+                    activity.Set("Registered at runtime");
+                    return;
+                }
+                if (!TextInputGateway.IsAvailable)
+                {
+                    state.Set("Unavailable", SentinalTone.Warning);
+                    activity.Set("None registered", SentinalTone.Warning);
+                    activity.tooltip =
+                        "Expected a registered text input presenter; actual: none. Register one at runtime.";
+                    return;
                 }
 
-                TerminalGUI.DrawStatusBox(gatewayStatus, gatewayColor);
-
-                string valueStatus = field.IsPromptOpen
-                    ? "FIELD: WAITING FOR INPUT"
-                    : $"FIELD: {Truncate(field.GetEffectiveValue(), 48)}";
-                TerminalGUI.DrawStatusBox(valueStatus, field.IsPromptOpen ? EditorColors.Caution : EditorColors.Info);
+                bool waiting = ((PromptedTextField)target).IsPromptOpen;
+                state.Set(waiting ? "Prompt open" : "Ready", waiting ? SentinalTone.Open : SentinalTone.Idle);
+                activity.Set(
+                    waiting
+                        ? "Editing this field"
+                        : TextInputGateway.IsShowing
+                            ? "Editing another field"
+                            : "Available"
+                );
             }
-            else if (!TextInputGateway.IsAvailable)
-            {
-                TerminalGUI.DrawStatusBox("GATEWAY: Register a presenter at runtime.", EditorColors.Info);
-            }
 
-            DrawDefaultInspector();
-
-            if (Application.isPlaying && GUILayout.Button("Open Prompt"))
-                field.OpenPrompt();
-
-            serializedObject.ApplyModifiedProperties();
-
-            if (Application.isPlaying)
-                Repaint();
+            root.schedule.Execute(Refresh).Every(100);
+            Refresh();
+            return root;
         }
 
         [MenuItem("CONTEXT/Button/Add Prompted Text Field")]
         private static void AddPromptedTextFieldFromButton(MenuCommand command)
         {
-            if (command.context is not Component component)
-                return;
-
-            var gameObject = component.gameObject;
-            if (gameObject.GetComponent<PromptedTextField>() != null)
-                return;
-
-            Undo.AddComponent<PromptedTextField>(gameObject);
-        }
-
-        private static string Truncate(string text, int maxLength)
-        {
-            if (string.IsNullOrEmpty(text))
-                return "(empty)";
-
-            return text.Length <= maxLength ? text : $"{text[..maxLength]}...";
+            if (command.context is Component component && !component.TryGetComponent(out PromptedTextField _))
+                Undo.AddComponent<PromptedTextField>(component.gameObject);
         }
     }
 }

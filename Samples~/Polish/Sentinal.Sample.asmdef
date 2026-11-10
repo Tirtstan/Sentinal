@@ -1,0 +1,12 @@
+{
+    "name": "Sentinal.Sample",
+    "references": [
+        "tirt.sentinal",
+        "tirt.sentinal.InputSystem",
+        "Unity.InputSystem",
+        "Unity.ugui"
+    ],
+    "defineConstraints": [
+        "ENABLE_INPUT_SYSTEM"
+    ]
+}

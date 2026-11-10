@@ -1,19 +1,19 @@
 #if ENABLE_INPUT_SYSTEM
+using System.Collections;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
-using System.Collections;
 
 namespace Sentinal.InputSystem.Components
 {
     /// <summary>
-    /// Abstract base class for button components that trigger Button's onClick via input actions.
+    /// Base for components that click a <see cref="Button"/> from an input action of their view's player.
     /// Provides common functionality for button interaction and pointer event handling.
     /// </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(Button))]
-    public abstract class InputActionButtonBase : ViewInputActionHandler
+    public abstract class InputActionButtonBase : ViewInputComponent
     {
         [Header("Action")]
         [SerializeField]
@@ -35,16 +35,9 @@ namespace Sentinal.InputSystem.Components
         )]
         protected bool deferExecution = true;
 
-        [SerializeField]
-        [Tooltip(
-            "Requires the input action to be released before accepting new presses when this component becomes active, preventing input bleeding from previous views."
-        )]
-        protected bool requireFreshPress = true;
-
         protected Button button;
         protected InputAction inputAction;
         protected EventSystem eventSystem;
-        protected InputFreshPressGate freshPressGate;
 
         protected bool CanInteract => button != null && button.IsActive() && button.IsInteractable();
 
@@ -56,14 +49,14 @@ namespace Sentinal.InputSystem.Components
                 if (ReferenceEquals(actionSelector, value))
                     return;
 
-                bool wasSubscribed = isSubscribed;
-                if (wasSubscribed)
+                bool wasListening = IsInputActive;
+                if (wasListening)
                     Unsubscribe();
 
                 actionSelector = value;
 
-                if (wasSubscribed)
-                    UpdateSubscription();
+                if (wasListening)
+                    Subscribe(Player);
             }
         }
 
@@ -85,44 +78,26 @@ namespace Sentinal.InputSystem.Components
             set => deferExecution = value;
         }
 
-        public bool RequireFreshPress
+        protected virtual void Awake()
         {
-            get => requireFreshPress;
-            set
-            {
-                if (requireFreshPress == value)
-                    return;
-
-                requireFreshPress = value;
-                if (isSubscribed && inputAction != null)
-                    freshPressGate.Arm(inputAction, requireFreshPress);
-            }
-        }
-
-        protected override void Awake()
-        {
-            base.Awake();
             button = GetComponent<Button>();
         }
 
         protected override void OnEnable()
         {
-            base.OnEnable();
             eventSystem = EventSystem.current;
+            base.OnEnable();
         }
 
-        protected override void Subscribe()
+        protected override void Subscribe(PlayerInput player)
         {
-            if (playerInput == null || playerInput.actions == null)
-                return;
-
             if (actionSelector == null || !actionSelector.IsValid())
             {
                 Debug.LogWarning($"{GetType().Name}: Action selector is not configured.", this);
                 return;
             }
 
-            inputAction = actionSelector.FindAction(playerInput);
+            inputAction = actionSelector.FindAction(player);
             if (inputAction == null)
             {
                 Debug.LogWarning(
@@ -132,30 +107,20 @@ namespace Sentinal.InputSystem.Components
                 return;
             }
 
-            freshPressGate.Arm(inputAction, requireFreshPress);
-
             SubscribeToInputAction();
-            isSubscribed = true;
         }
 
         protected override void Unsubscribe()
         {
-            if (inputAction != null)
-            {
-                UnsubscribeFromInputAction();
-                inputAction = null;
-            }
+            if (inputAction == null)
+                return;
 
-            freshPressGate.Disarm();
-            isSubscribed = false;
+            UnsubscribeFromInputAction();
+            inputAction = null;
         }
 
-        /// <summary>
-        /// Validates whether the current input action event is valid based on fresh press rules.
-        /// Returns true if the event should be processed, or false if it should be ignored.
-        /// </summary>
-        protected bool ValidateFreshPress(bool isCancelEvent = false) =>
-            freshPressGate.ShouldProcess(inputAction, isCancelEvent, requireFreshPress);
+        /// <summary>True when a callback of the button's action may act (fresh press, view accepts input).</summary>
+        protected bool ValidateFreshPress(InputAction.CallbackContext context) => CanProcessInput(context);
 
         /// <summary>
         /// Called when subscribing to the input action. Override to subscribe to specific action events.
@@ -168,41 +133,42 @@ namespace Sentinal.InputSystem.Components
         protected abstract void UnsubscribeFromInputAction();
 
         /// <summary>
-        /// Triggers the button's onClick event.
+        /// Triggers the button's onClick event. A click queued by input is dropped if input stops before it runs.
         /// </summary>
         protected void Click()
         {
             if (!CanInteract)
                 return;
 
+            bool fromInput = IsInputActive;
             if (deferExecution)
-            {
-                StartCoroutine(ClickNextFrame());
-            }
+                StartCoroutine(ClickNextFrame(fromInput));
             else
-            {
-                ExecuteClick();
-            }
+                ExecuteClick(fromInput);
         }
 
-        private IEnumerator ClickNextFrame()
+        private IEnumerator ClickNextFrame(bool fromInput)
         {
             yield return null;
-            ExecuteClick();
+            ExecuteClick(fromInput);
         }
 
-        /// <summary>
-        /// Executes the actual click event logic.
-        /// </summary>
-        protected void ExecuteClick()
+        private void ExecuteClick(bool fromInput)
         {
-            if (!CanInteract)
+            if (!CanInteract || (fromInput && !IsInputActive))
                 return;
 
             if (sendPointerEvents && eventSystem != null)
             {
                 if (selectButtonOnInputAction)
                     eventSystem.SetSelectedGameObject(button.gameObject);
+
+                // End the synthetic press before onClick can change focus or disable this button.
+                ExecuteEvents.Execute(
+                    button.gameObject,
+                    new PointerEventData(eventSystem),
+                    ExecuteEvents.pointerUpHandler
+                );
 
                 // ExecuteEvents.pointerClickHandler will trigger Button's onClick automatically
                 ExecuteEvents.Execute(
