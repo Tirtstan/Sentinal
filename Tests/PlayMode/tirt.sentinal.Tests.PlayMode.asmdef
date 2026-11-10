@@ -5,7 +5,8 @@
         "tirt.sentinal",
         "tirt.sentinal.InputSystem",
         "Unity.ugui",
-        "Unity.InputSystem"
+        "Unity.InputSystem",
+        "Unity.InputSystem.TestFramework"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

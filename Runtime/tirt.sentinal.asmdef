@@ -3,6 +3,7 @@
     "rootNamespace": "Sentinal",
     "references": [
         "Unity.TextMeshPro",
+        "Unity.InputSystem",
         "Unity.ugui",
         "Unity.Addressables",
         "Unity.ResourceManager"

@@ -1,360 +1,196 @@
 #if ENABLE_INPUT_SYSTEM
 using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using Sentinal.InputSystem.Components;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
 namespace Sentinal.InputSystem
 {
+    /// <summary>
+    /// Owns Back for every local player. Cancel works while the UI map is on; the optional always-on Back also works in
+    /// gameplay and, when there is nothing to go back from, opens the <see cref="OpenViewOnAction"/> marked to open on
+    /// unhandled Back (e.g. Escape opens Pause). A control bound to both is handled once, by the always-on Back.
+    /// </summary>
     [AddComponentMenu("Sentinal/View Dismissal Input Handler"), DisallowMultipleComponent]
-    public class ViewDismissalInputHandler : MonoBehaviour, IPlayerInputHandler
+    public sealed class ViewDismissalInputHandler : MonoBehaviour
     {
-        [Header("Input")]
-        [SerializeField]
-        [Tooltip("Where to source PlayerInput from.")]
-        private PlayerInputSource inputSource = PlayerInputSource.SentinalPlayerRole;
-
-        [SerializeField]
-        [Tooltip("Player key for SentinalPlayer lookup. 0 = Primary.")]
-        private int playerKey = SentinalPlayer.PrimaryKey;
-
-        [SerializeField]
-        [Tooltip("Direct PlayerInput reference used when source is DirectReference.")]
-        private PlayerInput directPlayerInput;
-
-        [SerializeField]
-        [Tooltip("Index into PlayerInput.all used when source is PlayerInputIndex.")]
-        private int playerInputIndex;
-
         [Header("Actions")]
         [SerializeField]
-        [Tooltip("Action to close the current menu (e.g., 'Cancel').")]
         private InputActionSelector cancelAction = new("UI/Cancel");
 
         [SerializeField]
-        [Tooltip("Action to refocus the last selected element (e.g., 'Focus').")]
+        [Tooltip(
+            "Back in an always-on map. With nothing to go back from, it opens the view whose Open View On Action has 'Opens On Unhandled Back'. An asset without this action has it off."
+        )]
+        private InputActionSelector alwaysOnBackAction = new("Global/Back");
+
+        [SerializeField]
         private InputActionSelector focusAction = new("UI/Focus");
 
         [SerializeField]
-        [Tooltip("Fire on action release (canceled) instead of action press (performed).")]
         private bool cancelActionOnRelease;
 
-        [SerializeField]
-        [Tooltip(
-            "Requires Cancel to be released before dismissing after the current view changes, preventing the same press from closing a newly focused view."
-        )]
-        private bool requireFreshPress = true;
-
-        [Header("Grouping")]
-        [SerializeField]
-        [Tooltip("Optional group mask to filter which views can be dismissed by this handler. Defaults to Everything.")]
-        private ViewGroupMask groupMask = ViewGroupMask.Everything;
-
-        public ViewGroupMask GroupMask
+        private sealed class Binding
         {
-            get => groupMask;
-            set => groupMask = value;
-        }
+            public PlayerInput Player;
+            public InputAction Cancel;
+            public InputAction AlwaysOnBack;
+            public InputAction Focus;
+            public System.Action<InputAction.CallbackContext> CancelPressed;
+            public System.Action<InputAction.CallbackContext> CancelReleased;
+            public System.Action<InputAction.CallbackContext> BackPressed;
+            public System.Action<InputAction.CallbackContext> BackReleased;
+            public System.Action<InputAction.CallbackContext> Focused;
+            public bool PressAccepted;
+            public bool PressIsAlwaysOn;
+            public bool Pending;
 
-        public PlayerInputSource InputSource => inputSource;
-
-        public int PlayerKey => playerKey;
-
-        public PlayerInput DirectPlayerInput => directPlayerInput;
-
-        public int PlayerInputIndex => playerInputIndex;
-
-        public InputActionSelector CancelAction
-        {
-            get => cancelAction;
-            set => ReplaceActions(value, focusAction);
-        }
-
-        public InputActionSelector FocusAction
-        {
-            get => focusAction;
-            set => ReplaceActions(cancelAction, value);
-        }
-
-        public bool CancelActionOnRelease
-        {
-            get => cancelActionOnRelease;
-            set
+            /// <summary>True when the always-on Back also hears this control, so Cancel leaves the press to it.</summary>
+            public bool AlwaysOnBackOwns(InputControl control)
             {
-                if (cancelActionOnRelease == value)
-                    return;
+                if (AlwaysOnBack == null)
+                    return false;
 
-                bool resubscribe = isSubscribed;
-                if (resubscribe)
-                    UnsubscribeFromInputActions();
+                foreach (InputControl bound in AlwaysOnBack.controls)
+                    if (bound == control)
+                        return true;
 
-                cancelActionOnRelease = value;
-
-                if (resubscribe)
-                    SubscribeToInputActions();
+                return false;
             }
         }
 
-        public bool RequireFreshPress
-        {
-            get => requireFreshPress;
-            set
-            {
-                requireFreshPress = value;
-                if (cancelInputAction != null)
-                    cancelFreshPressGate.Arm(cancelInputAction, requireFreshPress);
-            }
-        }
-
-        private PlayerInput playerInput;
-        private InputAction cancelInputAction;
-        private InputAction focusInputAction;
-        private bool isSubscribed;
-        private bool closeRequestedThisFrame;
-        private ViewSelector pendingCloseView;
-        private InputFreshPressGate cancelFreshPressGate;
-
-        private void Awake()
-        {
-            playerInput = ResolvePlayerInput();
-
-            if (playerInput != null)
-                SubscribeToInputActions();
-        }
+        private readonly Dictionary<PlayerInput, Binding> bindings = new();
 
         private void OnEnable()
         {
-            if (inputSource == PlayerInputSource.SentinalPlayerRole)
-                SentinalPlayer.OnPlayerChanged += OnPlayerRoleChanged;
-
-            SentinalViewRouter.OnSwitch += OnViewSwitch;
-
-            if (playerInput != null && !isSubscribed)
-                SubscribeToInputActions();
+            UnityEngine.InputSystem.InputSystem.onBeforeUpdate += RefreshPlayers;
+            RefreshPlayers();
         }
 
         private void OnDisable()
         {
-            if (inputSource == PlayerInputSource.SentinalPlayerRole)
-                SentinalPlayer.OnPlayerChanged -= OnPlayerRoleChanged;
-
-            SentinalViewRouter.OnSwitch -= OnViewSwitch;
-            UnsubscribeFromInputActions();
+            UnityEngine.InputSystem.InputSystem.onBeforeUpdate -= RefreshPlayers;
+            StopAllCoroutines();
+            foreach (Binding binding in bindings.Values.ToArray())
+                Unbind(binding);
+            bindings.Clear();
         }
 
-        private void OnViewSwitch(ViewSelector previousView, ViewSelector nextView)
+        private void RefreshPlayers()
         {
-            if (!requireFreshPress || cancelInputAction == null)
-                return;
-
-            cancelFreshPressGate.Arm(cancelInputAction, requireFreshPress);
-        }
-
-        private void OnPlayerRoleChanged(int key, PlayerInput newPlayer)
-        {
-            if (key != playerKey)
-                return;
-
-            UnsubscribeFromInputActions();
-            playerInput = newPlayer;
-
-            if (playerInput != null)
-                SubscribeToInputActions();
-        }
-
-        private PlayerInput ResolvePlayerInput()
-        {
-            return inputSource switch
-            {
-                PlayerInputSource.SentinalPlayerRole => SentinalPlayer.GetPlayer(playerKey),
-                PlayerInputSource.PlayerInputIndex => SentinalPlayer.GetPlayerByIndex(playerInputIndex),
-                _ => directPlayerInput,
-            };
-        }
-
-        /// <summary>
-        /// Sets the PlayerInput reference programmatically.
-        /// </summary>
-        public void SetPlayerInput(PlayerInput input)
-        {
-            directPlayerInput = input;
-            if (inputSource == PlayerInputSource.DirectReference)
-                SetResolvedPlayerInput(ResolvePlayerInput());
-        }
-
-        public void ConfigurePlayerInputSource(
-            PlayerInputSource source,
-            int roleKey,
-            PlayerInput directInput,
-            int inputIndex
-        )
-        {
-            if (isActiveAndEnabled && inputSource == PlayerInputSource.SentinalPlayerRole)
-                SentinalPlayer.OnPlayerChanged -= OnPlayerRoleChanged;
-
-            inputSource = source;
-            playerKey = roleKey;
-            directPlayerInput = directInput;
-            playerInputIndex = Mathf.Max(0, inputIndex);
-
-            if (isActiveAndEnabled && inputSource == PlayerInputSource.SentinalPlayerRole)
-                SentinalPlayer.OnPlayerChanged += OnPlayerRoleChanged;
-
-            SetResolvedPlayerInput(ResolvePlayerInput());
-        }
-
-        public void ReplaceActions(InputActionSelector cancelSelector, InputActionSelector focusSelector)
-        {
-            bool resubscribe = isSubscribed;
-            if (resubscribe)
-                UnsubscribeFromInputActions();
-
-            cancelAction = cancelSelector;
-            focusAction = focusSelector;
-
-            if (resubscribe)
-                SubscribeToInputActions();
-        }
-
-        private void SetResolvedPlayerInput(PlayerInput resolvedPlayerInput)
-        {
-            if (playerInput == resolvedPlayerInput)
-                return;
-
-            UnsubscribeFromInputActions();
-            playerInput = resolvedPlayerInput;
-
-            if (isActiveAndEnabled && playerInput != null)
-                SubscribeToInputActions();
-        }
-
-        /// <summary>
-        /// Gets the PlayerInput reference.
-        /// </summary>
-        public PlayerInput GetPlayerInput() => playerInput;
-
-        public string GetTrackingPlayerInputName() => playerInput != null ? playerInput.name : "None";
-
-        public PlayerInputSource GetInputSource() => inputSource;
-
-        public int GetPlayerKey() => playerKey;
-
-        public int GetPlayerInputIndex() => playerInputIndex;
-
-        private void SubscribeToInputActions()
-        {
-            if (isSubscribed || playerInput == null || playerInput.actions == null)
-                return;
-
-            if (cancelAction != null && cancelAction.IsValid())
-            {
-                cancelInputAction = cancelAction.FindAction(playerInput);
-                if (cancelInputAction != null)
+            foreach (Binding binding in bindings.Values.ToArray())
+                if (binding.Player == null || !PlayerInput.all.Contains(binding.Player))
                 {
-                    cancelFreshPressGate.Arm(cancelInputAction, requireFreshPress);
-
-                    if (cancelActionOnRelease)
-                        cancelInputAction.canceled += OnCancelCanceled;
-                    else
-                        cancelInputAction.performed += OnCancelPerformed;
+                    Unbind(binding);
+                    bindings.Remove(binding.Player);
                 }
-            }
-
-            if (focusAction != null && focusAction.IsValid())
+            foreach (PlayerInput player in PlayerInput.all)
             {
-                focusInputAction = focusAction.FindAction(playerInput);
-                if (focusInputAction != null)
-                    focusInputAction.performed += OnFocusPerformed;
+                if (bindings.ContainsKey(player) || player.actions == null)
+                    continue;
+                var binding = new Binding
+                {
+                    Player = player,
+                    Cancel = cancelAction.FindAction(player.actions),
+                    AlwaysOnBack = alwaysOnBackAction.FindAction(player.actions),
+                    Focus = focusAction.FindAction(player.actions),
+                };
+                binding.CancelPressed = context =>
+                {
+                    if (!binding.AlwaysOnBackOwns(context.control))
+                        OnPressed(binding, binding.Cancel, alwaysOn: false);
+                };
+                binding.CancelReleased = context =>
+                {
+                    if (!binding.AlwaysOnBackOwns(context.control))
+                        OnReleased(binding);
+                };
+                binding.BackPressed = context => OnPressed(binding, binding.AlwaysOnBack, alwaysOn: true);
+                binding.BackReleased = context => OnReleased(binding);
+                binding.Focused = context =>
+                {
+                    if (binding.Player == UIAuthority.Current)
+                        SentinalViewRouter.TrySelectCurrentView();
+                };
+                if (binding.Cancel != null)
+                {
+                    binding.Cancel.performed += binding.CancelPressed;
+                    binding.Cancel.canceled += binding.CancelReleased;
+                }
+                if (binding.AlwaysOnBack != null)
+                {
+                    binding.AlwaysOnBack.performed += binding.BackPressed;
+                    binding.AlwaysOnBack.canceled += binding.BackReleased;
+                }
+                if (binding.Focus != null)
+                    binding.Focus.performed += binding.Focused;
+                bindings.Add(player, binding);
             }
-
-            isSubscribed = true;
         }
 
-        private void UnsubscribeFromInputActions()
+        private void OnPressed(Binding binding, InputAction action, bool alwaysOn)
         {
-            if (!isSubscribed)
+            SentinalView target = SentinalViewRouter.GetBackView(binding.Player);
+            // With nothing focused only the always-on Back has work to do: opening the unhandled-Back view.
+            bool targetAccepts = target != null ? target.CanProcessInput(action) : alwaysOn;
+            binding.PressAccepted = !binding.Pending && targetAccepts;
+            binding.PressIsAlwaysOn = alwaysOn;
+            if (!cancelActionOnRelease && binding.PressAccepted)
+                RequestBack(binding);
+        }
+
+        private void OnReleased(Binding binding)
+        {
+            if (cancelActionOnRelease && binding.PressAccepted)
+                RequestBack(binding);
+            binding.PressAccepted = false;
+        }
+
+        private void RequestBack(Binding binding)
+        {
+            if (binding.Pending)
                 return;
 
-            if (cancelInputAction != null)
+            if (!SentinalViewRouter.CanHandleBack(binding.Player))
             {
-                if (cancelActionOnRelease)
-                    cancelInputAction.canceled -= OnCancelCanceled;
-                else
-                    cancelInputAction.performed -= OnCancelPerformed;
-
-                cancelInputAction = null;
+                if (binding.PressIsAlwaysOn)
+                    OpenViewOnAction.TryOpenOnUnhandledBack(binding.Player);
+                return;
             }
 
-            cancelFreshPressGate.Disarm();
-
-            if (focusInputAction != null)
-            {
-                focusInputAction.performed -= OnFocusPerformed;
-                focusInputAction = null;
-            }
-
-            isSubscribed = false;
+            SentinalView target = SentinalViewRouter.GetBackView(binding.Player);
+            binding.Pending = true;
+            SentinalViewRouter.NotifyBackPending(binding.Player);
+            StartCoroutine(BackNextFrame(binding, target));
         }
 
-        private void OnCancelPerformed(InputAction.CallbackContext context)
-        {
-            if (!cancelFreshPressGate.ShouldProcess(cancelInputAction, isCancelEvent: false, requireFreshPress))
-                return;
-
-            RequestCloseCurrentView();
-        }
-
-        private void OnCancelCanceled(InputAction.CallbackContext context)
-        {
-            if (!cancelFreshPressGate.ShouldProcess(cancelInputAction, isCancelEvent: true, requireFreshPress))
-                return;
-
-            RequestCloseCurrentView();
-        }
-
-        private void RequestCloseCurrentView()
-        {
-            if (closeRequestedThisFrame)
-                return;
-
-            pendingCloseView = SentinalViewRouter.CurrentView;
-            ViewSelector window = SentinalViewRouter.CurrentWindow;
-            if (pendingCloseView == null || window == null || window.RootView)
-                return;
-
-            if (groupMask != ViewGroupMask.Everything && (groupMask & window.GroupMask) == ViewGroupMask.Nothing)
-                return;
-
-            closeRequestedThisFrame = true;
-            StartCoroutine(CloseCurrentViewNextFrame());
-        }
-
-        private IEnumerator CloseCurrentViewNextFrame()
+        private IEnumerator BackNextFrame(Binding binding, SentinalView target)
         {
             yield return null;
-
-            closeRequestedThisFrame = false;
-            if (
-                pendingCloseView == null
-                || pendingCloseView.FocusWindow == null
-                || pendingCloseView.FocusWindow.RootView
-            )
-            {
-                pendingCloseView = null;
+            binding.Pending = false;
+            if (!bindings.ContainsKey(binding.Player) || SentinalViewRouter.GetBackView(binding.Player) != target)
                 yield break;
-            }
 
-            if (pendingCloseView.IsActive && SentinalViewRouter.CurrentView == pendingCloseView)
-                SentinalViewRouter.CloseCurrentView();
-
-            pendingCloseView = null;
+            if (target != null && target.IsShown)
+                SentinalViewRouter.HandleBack(binding.Player);
         }
 
-        private void OnFocusPerformed(InputAction.CallbackContext context) => SentinalViewRouter.TrySelectCurrentView();
-
-        private void OnDestroy()
+        private static void Unbind(Binding binding)
         {
-            SentinalPlayer.OnPlayerChanged -= OnPlayerRoleChanged;
-            UnsubscribeFromInputActions();
+            if (binding.Cancel != null)
+            {
+                binding.Cancel.performed -= binding.CancelPressed;
+                binding.Cancel.canceled -= binding.CancelReleased;
+            }
+            if (binding.AlwaysOnBack != null)
+            {
+                binding.AlwaysOnBack.performed -= binding.BackPressed;
+                binding.AlwaysOnBack.canceled -= binding.BackReleased;
+            }
+            if (binding.Focus != null)
+                binding.Focus.performed -= binding.Focused;
         }
     }
 }

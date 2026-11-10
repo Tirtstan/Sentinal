@@ -9,8 +9,8 @@ using UnityEngine.UI;
 namespace Sentinal.InputSystem.Components
 {
     /// <summary>
-    /// Subscribes to a UI action with hold interaction and triggers a button's onClick event.
-    /// Works with Sentinel ViewInputActionHandler and follows view focus rules.
+    /// Clicks a button when its action's hold interaction completes. A hold in progress is cancelled whenever the
+    /// component stops listening (focus lost, player changed), so a partial hold never carries into a later press.
     /// </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(Button))]
@@ -25,7 +25,14 @@ namespace Sentinal.InputSystem.Components
         /// Invoked when a hold interaction is canceled (before completion).
         /// </summary>
         public event Action OnHoldCanceled;
+        public event Action<PlayerInput> OnHoldCompleted;
+
+        /// <summary>Invoked only when the player releases a hold before completion.</summary>
+        public event Action<PlayerInput> OnHoldReleasedBeforeCompletion;
+
         private const string HoldInteractionName = "Hold";
+
+        private bool holding;
 
         protected override void SubscribeToInputAction()
         {
@@ -51,15 +58,17 @@ namespace Sentinal.InputSystem.Components
             inputAction.started -= OnActionStarted;
             inputAction.performed -= OnActionPerformed;
             inputAction.canceled -= OnActionCanceled;
+            CancelHold();
         }
 
         private void OnActionStarted(InputAction.CallbackContext context)
         {
-            if (!ValidateFreshPress(isCancelEvent: false) || !CanInteract)
+            if (!ValidateFreshPress(context) || !CanInteract)
                 return;
 
             if (context.interaction is HoldInteraction hold)
             {
+                holding = true;
                 SendPointerDown();
                 OnHoldStarted?.Invoke(hold.duration);
             }
@@ -67,23 +76,39 @@ namespace Sentinal.InputSystem.Components
 
         private void OnActionPerformed(InputAction.CallbackContext context)
         {
-            if (!ValidateFreshPress(isCancelEvent: false))
+            if (!ValidateFreshPress(context) || !holding)
                 return;
 
-            if (context.interaction is HoldInteraction)
+            if (context.interaction is HoldInteraction && CanInteract)
+            {
+                PlayerInput player = Player;
+                holding = false;
+                SendPointerUp();
+                OnHoldCompleted?.Invoke(player);
                 Click();
+            }
         }
 
         private void OnActionCanceled(InputAction.CallbackContext context)
         {
-            if (!ValidateFreshPress(isCancelEvent: true))
+            if (!ValidateFreshPress(context))
                 return;
 
-            if (context.interaction is HoldInteraction)
+            if (context.interaction is HoldInteraction && holding)
             {
-                SendPointerUp();
-                OnHoldCanceled?.Invoke();
+                OnHoldReleasedBeforeCompletion?.Invoke(Player);
+                CancelHold();
             }
+        }
+
+        private void CancelHold()
+        {
+            if (!holding)
+                return;
+
+            holding = false;
+            SendPointerUp();
+            OnHoldCanceled?.Invoke();
         }
 
         private void SendPointerDown()

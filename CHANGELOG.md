@@ -5,10 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.0.0] - 2026-11-10
+
+A rewrite around layers and local players. This is a breaking release with no automatic 5.x migration; see **Upgrading from 5.x** in the README.
+
+### Added
+
+- Global and Player **layers** in Project Settings › Sentinal. Each layer sets what happens to other views on it, what Back does, and whose input moves to UI. Expanding a layer lists its source assignments, grouping inherited prefab copies and nested tabs.
+- **Input Delay** on each top-level view ignores input for its configured number of unscaled seconds whenever it or a nested panel gets input back. Views on the same layer can use different delays.
+- `SentinalView` with explicit Closed, Opening, Open, Closing and Hidden states, `OpenAsync`/`CloseAsync`, and `Open(owner)` for per-player views.
+- `IBackHandler` for custom Back. `SentinalViewRouter.PreviewBack()` returns a `BackPreview` describing what Back would do now.
+- `UIAuthority` (Primary player, Dynamic most recent, Explicit authority request, Device class priority) and `PlayerInputMaps`, the single owner of action-map switching with always-on maps and per-scene base maps.
+- `ViewDismissalInputHandler` routes each player's Back to their own chain. An optional always-on Back (e.g. Escape) works in gameplay and opens the `OpenViewOnAction` marked **Opens On Unhandled Back** when there is nothing to close.
+- `OpenViewOnAction` opens a view from an action and can close it on a second press.
+- Input components follow their nearest view's player, with **Active when** (View focused / View open). Presses held before a view regains input never fire.
+- `ViewTransition` and `CanvasGroupFade` with cancellable, reversible transitions.
+- Sentinal Monitor (**Window › Sentinal › Monitor**): the live view stack, Back outcome, player maps, and buttons to send Back as any player.
+- The **Layers and local players** sample.
+
+### Changed
+
+- `ViewSelector` is now `SentinalView`. Nested views belong to their nearest parent view.
+- Compact, consistently themed status panels on every component Inspector. View panels include their layer description; clicking it opens that layer in Project Settings.
+- `TabbedView` owns its next/previous tab actions.
+- Directional selection navigation (`SelectionNavigator`) moved to the separate Compass package.
+- Requires Unity 6.0 or later and declares its Input System and uGUI dependencies.
+- New README with screenshots and a full component reference in `Documentation~/Components.md`.
+
+### Removed
+
+- Per-view priorities, view groups, hide modes, root views and `ActionMapGate`. Use layers instead.
+- `ICloseableView`, `SentinalPlayer`, `ViewInputSystemHandler`, `TabbedViewInputHandler` and the 5.x input and map helpers.
+- The old Examples sample.
+
 ## [5.2.0] - 2026-10-09
 
 ### Added
 
+- `InputActionSelector.FindAction(InputActionAsset)` resolves actions without enabling them, including ID-based references in cloned assets.
 - `ViewSelector.FocusParent` declares focus ownership independently of Transform parenting. `FocusWindow` resolves the owning window.
 - `SentinalViewRouter.CurrentWindow` exposes the focused window while `CurrentView` identifies its focused panel. `IsFocusWithin(ViewSelector)` checks whether focus belongs to a view or one of its owned panels.
 - `HandlerInputMode.FocusWithin` keeps shared menu input enabled while an owned panel is focused and suspends it when an independent modal takes focus.
@@ -25,6 +59,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Press-triggered dismissal now observes Cancel releases, so closing a modal does not swallow the next Back press on its backing menu.
 - Owned panels receive focus and input on the first menu opening, regardless of whether the window or panel registers first.
 - Background tracked views cannot overwrite EventSystem selection while another view holds focus.
 - Disabling a `ViewInputSystemHandler` disables its input in every mode.

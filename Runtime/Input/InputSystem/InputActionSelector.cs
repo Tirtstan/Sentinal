@@ -49,6 +49,24 @@ namespace Sentinal.InputSystem
         }
 
         /// <summary>
+        /// Resolves an action in the supplied asset without enabling it. References are resolved
+        /// by ID so selectors also work with player-specific copies of the asset.
+        /// </summary>
+        public InputAction FindAction(InputActionAsset asset)
+        {
+            if (asset == null)
+                return null;
+
+            if (useActionName)
+                return string.IsNullOrEmpty(actionName) ? null : asset.FindAction(actionName);
+
+            if (actionReference == null || actionReference.action == null)
+                return null;
+
+            return asset.FindAction(actionReference.action.id);
+        }
+
+        /// <summary>
         /// Finds the InputAction from the given PlayerInput based on the selector settings.
         /// </summary>
         /// <param name="playerInput">The PlayerInput to search in.</param>
@@ -58,53 +76,7 @@ namespace Sentinal.InputSystem
             if (playerInput == null || playerInput.actions == null)
                 return null;
 
-            EnsureSupportedNotificationBehavior(playerInput);
-
-            InputAction inputAction;
-            if (useActionName)
-            {
-                if (string.IsNullOrEmpty(actionName))
-                    return null;
-
-                inputAction = playerInput.actions.FindAction(actionName);
-            }
-            else
-            {
-                if (actionReference == null || actionReference.action == null)
-                    return null;
-
-                inputAction = actionReference.action;
-            }
-
-            inputAction?.Enable();
-            return inputAction;
-        }
-
-        /// <summary>
-        /// Ensures the PlayerInput.notificationBehavior is set to a mode supported by Sentinal
-        /// (InvokeCSharpEvents or InvokeUnityEvents). If it is set to an unsupported mode
-        /// (SendMessages/BroadcastMessages), it will be changed to InvokeCSharpEvents at runtime
-        /// and a warning will be logged so the user can fix the setting in the inspector.
-        /// </summary>
-        private static void EnsureSupportedNotificationBehavior(PlayerInput playerInput)
-        {
-            if (playerInput == null)
-                return;
-
-            var behavior = playerInput.notificationBehavior;
-
-            if (behavior == PlayerNotifications.InvokeCSharpEvents || behavior == PlayerNotifications.InvokeUnityEvents)
-                return;
-
-            var previous = behavior;
-            playerInput.notificationBehavior = PlayerNotifications.InvokeCSharpEvents;
-
-            Debug.LogWarning(
-                $"InputActionSelector: PlayerInput.notificationBehavior was '{previous}' and was automatically changed "
-                    + $"to '{PlayerNotifications.InvokeCSharpEvents}' for Sentinal input integration. "
-                    + "Please update this setting on the PlayerInput component in the inspector to avoid runtime changes.",
-                playerInput
-            );
+            return FindAction(playerInput.actions);
         }
 
         /// <summary>

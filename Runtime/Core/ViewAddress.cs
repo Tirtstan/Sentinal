@@ -18,7 +18,7 @@ namespace Sentinal
 
     /// <summary>
     /// ScriptableObject key for cross-prefab view discovery.
-    /// Assign to a <see cref="ViewSelector"/> to register it with <see cref="ViewAddressRegistry"/>.
+    /// Assign to a <see cref="SentinalView"/> to register it with <see cref="ViewAddressRegistry"/>.
     /// If the view isn't in the scene, the configured prefab source can create it.
     /// </summary>
     [CreateAssetMenu(fileName = "NewViewAddress", menuName = "Sentinal/View Address")]
@@ -32,7 +32,7 @@ namespace Sentinal
         [SerializeField]
         [FormerlySerializedAs("FallbackPrefab")]
         [Tooltip("Prefab to instantiate when Prefab Source is Direct Prefab.")]
-        private ViewSelector fallbackPrefab;
+        private SentinalView fallbackPrefab;
 
 #if SENTINAL_ADDRESSABLES
         [SerializeField]
@@ -46,7 +46,7 @@ namespace Sentinal
             set => prefabSource = value;
         }
 
-        public ViewSelector FallbackPrefab
+        public SentinalView FallbackPrefab
         {
             get => fallbackPrefab;
             set => fallbackPrefab = value;

@@ -1,58 +1,73 @@
+#if ENABLE_INPUT_SYSTEM
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 namespace Sentinal.InputSystem.Components
 {
+    /// <summary>
+    /// Switches between tab panels inside a view. Panels are views nested under the view that owns this component
+    /// (the nearest <see cref="SentinalView"/> at or above it); opening one tab closes the others, and Back on a
+    /// tab passes through to the owner. The next/previous tab actions are its owner's player's, and work while the
+    /// owner is focused (focus on it or one of its tabs; a focused popup inside it stops them).
+    /// </summary>
     [DisallowMultipleComponent]
-    public class TabbedView : MonoBehaviour
+    public class TabbedView : ViewInputComponent
     {
         [Header("Components")]
-        [SerializeField]
-        [Tooltip("The tracked view owning these panels. Focus ownership is independent of Transform parenting.")]
-        private ViewSelector focusOwner;
-
         [SerializeField]
         private Toggle[] groupToggles = Array.Empty<Toggle>();
 
         [SerializeField]
-        private ViewSelector[] groupPanels = Array.Empty<ViewSelector>();
+        [Tooltip("One panel per toggle. Each must be a view nested directly under this component's view.")]
+        private SentinalView[] groupPanels = Array.Empty<SentinalView>();
 
         [Header("Configs")]
         [SerializeField]
-        [Tooltip("The index of the tab to set as active by default.")]
+        [Tooltip("The tab shown the first time the view opens.")]
         private int defaultTabIndex;
 
+        [SerializeField]
+        [Tooltip("Reopening the view returns to the tab it was on. Off: it starts on the default tab every time.")]
+        private bool rememberLastTab = true;
+
+        [Header("Tab Actions")]
+        [SerializeField]
+        [Tooltip(
+            "Optional. Moves to the next tab when pressed (positive value). Resolved on the player's own action asset; absent there = off."
+        )]
+        private InputActionReference nextTabAction;
+
+        [SerializeField]
+        [Tooltip(
+            "Optional. Moves to the previous tab when pressed (positive value). When it is the same 1D axis action as Next Tab, its negative half moves to the previous tab instead."
+        )]
+        private InputActionReference previousTabAction;
+
+        [SerializeField]
+        [Tooltip("Tab actions wrap from the last tab to the first and vice versa.")]
+        private bool wrapTabs = true;
+
         private int currentTabIndex;
+        private SentinalView owner;
+        private InputAction nextAction;
+        private InputAction previousAction;
         private ToggleGroup toggleGroup;
         private UnityAction<bool>[] toggleListeners = Array.Empty<UnityAction<bool>>();
         private ReadOnlyCollection<Toggle> readOnlyToggles;
-        private ReadOnlyCollection<ViewSelector> readOnlyPanels;
-
-        public event Action TabsChanged;
+        private ReadOnlyCollection<SentinalView> readOnlyPanels;
 
         public IReadOnlyList<Toggle> GroupToggles => readOnlyToggles ??= Array.AsReadOnly(groupToggles);
 
-        public IReadOnlyList<ViewSelector> GroupPanels => readOnlyPanels ??= Array.AsReadOnly(groupPanels);
+        public IReadOnlyList<SentinalView> GroupPanels => readOnlyPanels ??= Array.AsReadOnly(groupPanels);
 
         public int CurrentTabIndex => currentTabIndex;
 
-        public ViewSelector FocusOwner
-        {
-            get => focusOwner;
-            set
-            {
-                if (focusOwner == value)
-                    return;
-                ValidatePanels(value, groupToggles, groupPanels);
-                ReleasePanels();
-                focusOwner = value;
-                BindPanels();
-            }
-        }
+        public SentinalView Owner => owner;
 
         public int DefaultTabIndex
         {
@@ -60,31 +75,86 @@ namespace Sentinal.InputSystem.Components
             set => defaultTabIndex = Mathf.Max(0, value);
         }
 
+        public bool WrapTabs
+        {
+            get => wrapTabs;
+            set => wrapTabs = value;
+        }
+
         private void Awake()
         {
-            ValidatePanels(focusOwner, groupToggles, groupPanels);
-            BindPanels();
+            owner = ParentView;
+            ValidatePanels();
+            foreach (SentinalView panel in groupPanels)
+                panel.IsTab = true;
+
             TryGetComponent(out toggleGroup);
             SetupToggleGroup();
             SubscribeToToggles();
-
-            if (groupToggles.Length > 0)
-                SelectTab(Mathf.Clamp(defaultTabIndex, 0, groupToggles.Length - 1));
+            currentTabIndex = ClampedDefault();
+            owner.Opened += OnOwnerOpened;
         }
 
-        private void OnEnable()
+        protected override void OnEnable()
         {
             if (groupToggles.Length > 0)
-                SetPanelsActive(currentTabIndex);
+                SelectTab(currentTabIndex);
+
+            base.OnEnable();
         }
 
-        private void OnDisable() => SetPanelsActive(-1);
+        protected override void Subscribe(PlayerInput player)
+        {
+            nextAction = Resolve(nextTabAction, player);
+            previousAction = Resolve(previousTabAction, player);
+            if (nextAction != null)
+                nextAction.performed += OnNextPerformed;
+            if (previousAction != null && previousAction != nextAction)
+                previousAction.performed += OnPreviousPerformed;
+        }
+
+        protected override void Unsubscribe()
+        {
+            if (nextAction != null)
+                nextAction.performed -= OnNextPerformed;
+            if (previousAction != null)
+                previousAction.performed -= OnPreviousPerformed;
+
+            nextAction = null;
+            previousAction = null;
+        }
+
+        private static InputAction Resolve(InputActionReference reference, PlayerInput player) =>
+            reference != null && reference.action != null ? player.actions.FindAction(reference.action.id) : null;
+
+        private void OnNextPerformed(InputAction.CallbackContext context)
+        {
+            if (!CanProcessInput(context))
+                return;
+
+            float value = context.ReadValue<float>();
+            if (value > 0f)
+                Next(wrapTabs);
+            else if (value < 0f && previousAction == nextAction)
+                Previous(wrapTabs);
+        }
+
+        private void OnPreviousPerformed(InputAction.CallbackContext context)
+        {
+            if (CanProcessInput(context) && context.ReadValue<float>() > 0f)
+                Previous(wrapTabs);
+        }
 
         private void OnValidate()
         {
+            SentinalView validationOwner = GetComponentInParent<SentinalView>(true);
+            if (validationOwner == null || groupPanels.Length == 0)
+                return;
+
+            owner = validationOwner;
             try
             {
-                ValidatePanels(focusOwner, groupToggles, groupPanels);
+                ValidatePanels();
             }
             catch (InvalidOperationException exception)
             {
@@ -95,85 +165,44 @@ namespace Sentinal.InputSystem.Components
         private void OnDestroy()
         {
             UnsubscribeFromToggles();
-            SetPanelsActive(-1);
-            ReleasePanels();
+            if (owner != null)
+                owner.Opened -= OnOwnerOpened;
         }
 
-        public void ReplaceTabs(IReadOnlyList<Toggle> toggles, IReadOnlyList<ViewSelector> panels)
+        private void OnOwnerOpened()
         {
-            Toggle[] replacementToggles = Copy(toggles);
-            ViewSelector[] replacementPanels = Copy(panels);
-            ValidatePanels(focusOwner, replacementToggles, replacementPanels);
-
-            UnsubscribeFromToggles();
-            SetPanelsActive(-1);
-            ReleasePanels();
-
-            groupToggles = replacementToggles;
-            groupPanels = replacementPanels;
-            readOnlyToggles = null;
-            readOnlyPanels = null;
-
-            BindPanels();
-
-            SetupToggleGroup();
-            SubscribeToToggles();
-
-            if (groupToggles.Length == 0)
-            {
-                currentTabIndex = 0;
-                SetPanelsActive(-1);
-                TabsChanged?.Invoke();
-                return;
-            }
-
-            SelectTab(Mathf.Clamp(currentTabIndex, 0, groupToggles.Length - 1));
-            TabsChanged?.Invoke();
+            if (!rememberLastTab)
+                currentTabIndex = ClampedDefault();
         }
 
-        private void BindPanels()
-        {
-            foreach (ViewSelector panel in groupPanels)
-                panel.FocusParent = focusOwner;
-        }
+        private int ClampedDefault() =>
+            groupToggles.Length > 0 ? Mathf.Clamp(defaultTabIndex, 0, groupToggles.Length - 1) : 0;
 
-        private void ReleasePanels()
+        private void ValidatePanels()
         {
-            foreach (ViewSelector panel in groupPanels)
-                if (panel != null && panel.FocusParent == focusOwner)
-                    panel.FocusParent = null;
-        }
-
-        private void ValidatePanels(ViewSelector owner, Toggle[] toggles, ViewSelector[] panels)
-        {
-            if (panels.Length == 0)
-                return;
-            if (owner == null || !owner.TrackView)
+            if (owner == null)
                 throw new InvalidOperationException(
-                    $"{name} expected a tracked Focus Owner for {panels.Length} panels; actual: {(owner != null ? owner.name + " is untracked" : "missing owner")}."
-                );
-            if (panels.Length != toggles.Length)
-                throw new InvalidOperationException(
-                    $"{name} expected one toggle per panel; actual: {toggles.Length} toggles, {panels.Length} panels."
+                    $"{name} expected a {nameof(SentinalView)} on or above it to own its tabs; actual: none."
                 );
 
-            var seen = new HashSet<ViewSelector>();
-            for (int i = 0; i < panels.Length; i++)
+            if (groupPanels.Length != groupToggles.Length)
+                throw new InvalidOperationException(
+                    $"{name} expected one toggle per panel; actual: {groupToggles.Length} toggles, {groupPanels.Length} panels."
+                );
+
+            var seen = new HashSet<SentinalView>();
+            for (int i = 0; i < groupPanels.Length; i++)
             {
-                ViewSelector panel = panels[i];
-                if (panel == null || toggles[i] == null || !panel.TrackView || panel == owner || !seen.Add(panel))
+                SentinalView panel = groupPanels[i];
+                if (panel == null || groupToggles[i] == null || !seen.Add(panel))
                     throw new InvalidOperationException(
-                        $"{name} expected a unique tracked panel and toggle at index {i}, distinct from owner '{owner.name}'; actual: panel={(panel != null ? panel.name : "missing")}, toggle={(toggles[i] != null ? toggles[i].name : "missing")}."
+                        $"{name} expected a unique panel and toggle at index {i}; actual: panel={(panel != null ? panel.name : "missing")}, toggle={(groupToggles[i] != null ? groupToggles[i].name : "missing")}."
                     );
-                if (panel.FocusParent != null && panel.FocusParent != owner && panel.FocusParent != focusOwner)
+
+                if (panel.Parent != owner)
                     throw new InvalidOperationException(
-                        $"{name} expected panel '{panel.name}' to belong to '{owner.name}'; actual: already owned by '{panel.FocusParent.name}'."
+                        $"{name} expected tab panel '{panel.name}' nested under '{owner.name}' in the hierarchy; actual: its parent view is {(panel.Parent != null ? $"'{panel.Parent.name}'" : "none (top-level)")}."
                     );
-                for (ViewSelector parent = owner; parent != null; parent = parent.FocusParent)
-                    if (parent == panel)
-                        throw new InvalidOperationException(
-                            $"{name} expected panel '{panel.name}' outside the owner chain of '{owner.name}'; actual: ownership would form a cycle."
-                        );
             }
         }
 
@@ -202,7 +231,7 @@ namespace Sentinal.InputSystem.Components
         }
 
         /// <summary>Selects an authored panel. Can be wired directly to a Button's onClick event.</summary>
-        public void SelectTab(ViewSelector panel)
+        public void SelectTab(SentinalView panel)
         {
             if (panel == null)
                 throw new ArgumentNullException(
@@ -217,10 +246,7 @@ namespace Sentinal.InputSystem.Components
                     nameof(panel)
                 );
 
-            if (!SelectTab(index))
-                throw new InvalidOperationException(
-                    $"{name} expected a toggle for panel '{panel.name}' at index {index}; actual: selection rejected with {groupToggles.Length} toggles."
-                );
+            SelectTab(index);
         }
 
         public bool SelectTab(int index)
@@ -233,15 +259,17 @@ namespace Sentinal.InputSystem.Components
             if (toggle != null && !toggle.isOn)
                 toggle.isOn = true;
 
-            SetPanelsActive(index);
-            if (SentinalViewRouter.IsFocusWithin(focusOwner))
-                SentinalViewRouter.TrySelectCurrentView();
+            for (int i = 0; i < groupPanels.Length; i++)
+                if (i != index)
+                    groupPanels[i].Close();
+
+            groupPanels[index].Open();
             return true;
         }
 
         private void OnTabToggle(int tabIndex, bool isOn)
         {
-            if (isOn)
+            if (isOn && tabIndex != currentTabIndex)
                 SelectTab(tabIndex);
         }
 
@@ -285,30 +313,6 @@ namespace Sentinal.InputSystem.Components
             }
         }
 
-        private void SetPanelsActive(int activeIndex)
-        {
-            for (int i = 0; i < groupPanels.Length; i++)
-            {
-                if (i != activeIndex && groupPanels[i] != null)
-                    groupPanels[i].gameObject.SetActive(false);
-            }
-
-            if (activeIndex >= 0 && activeIndex < groupPanels.Length && groupPanels[activeIndex] != null)
-                groupPanels[activeIndex].gameObject.SetActive(true);
-        }
-
-        private static T[] Copy<T>(IReadOnlyList<T> source)
-        {
-            if (source == null)
-                return Array.Empty<T>();
-
-            var copy = new T[source.Count];
-            for (int i = 0; i < copy.Length; i++)
-                copy[i] = source[i];
-
-            return copy;
-        }
-
         private void Reset()
         {
             TryGetComponent(out toggleGroup);
@@ -316,3 +320,4 @@ namespace Sentinal.InputSystem.Components
         }
     }
 }
+#endif
