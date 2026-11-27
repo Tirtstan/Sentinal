@@ -31,9 +31,28 @@ namespace Sentinal.InputSystem.Components
         [Tooltip("When this component listens to its player's input, relative to its nearest parent view.")]
         private ActiveWhen activeWhen = ActiveWhen.ViewFocused;
 
+        private static bool playModeClockReady;
+
         private double listeningSince;
         private PlayerInput activePlayer;
         private bool isInputActive;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetClockState()
+        {
+            playModeClockReady = false;
+            UnityEngine.InputSystem.InputSystem.onAfterUpdate -= MarkPlayModeClockReady;
+            UnityEngine.InputSystem.InputSystem.onAfterUpdate += MarkPlayModeClockReady;
+        }
+
+        private static void MarkPlayModeClockReady()
+        {
+            if (InputState.currentUpdateType is InputUpdateType.None or InputUpdateType.Editor)
+                return;
+
+            playModeClockReady = true;
+            UnityEngine.InputSystem.InputSystem.onAfterUpdate -= MarkPlayModeClockReady;
+        }
 
         public ActiveWhen ActiveWhen
         {
@@ -109,7 +128,11 @@ namespace Sentinal.InputSystem.Components
 
         private void Activate(PlayerInput player)
         {
-            listeningSince = InputState.currentTime;
+            listeningSince =
+                playModeClockReady
+                && InputState.currentUpdateType is not (InputUpdateType.None or InputUpdateType.Editor)
+                    ? InputState.currentTime
+                    : 0d;
             activePlayer = player;
             isInputActive = true;
             Subscribe(player);

@@ -184,7 +184,7 @@ Every input component finds its player through its nearest view. Outside a view,
 
 | Component | Settings |
 | --- | --- |
-| `OpenViewOnAction` | **Action**, **View**, **Pressing Again** (does nothing / closes it), **Only When No Menu Open** (won't open over a Global view that moves everyone to UI), **Opens On Unhandled Back** (one per scene). It never opens below the focused view's layer, or in a frame where Back is being handled. |
+| `OpenViewOnAction` | **Actions** (any of them opens it; list a shortcut once per map it lives in, e.g. `Player/OtherMenu` and `UI/OtherMenu`), **View**, **Pressing Again** (does nothing / closes it), **Only When No Menu Open** (won't open over a Global view that moves everyone to UI), **Opens On Unhandled Back** (one per scene). It never opens below the focused view's layer, or in a frame where Back is being handled. |
 | `InputActionButton` | **Action**, **Send Pointer Events** (button visuals and reselection), **Select Button On Input Action**, **Defer Execution** (clicks next frame, so the press can't carry into a view it opens), **Trigger On Release**. It only clicks a `Button` that is enabled and interactable. |
 | `InputActionButtonHold` | Clicks when a Hold interaction completes, and raises hold started, cancelled and completed events for progress UI. |
 | `DisplayInputString` | Writes the binding text for the player's current control scheme into a TextMeshPro label, with a prefix and suffix. |

@@ -143,7 +143,9 @@ namespace Sentinal.Tests
             GameObject item = CreateObject("Opener");
             OpenViewOnAction opener = item.AddComponent<OpenViewOnAction>();
             var data = new SerializedObject(opener);
-            data.FindProperty("action").objectReferenceValue = Track(
+            SerializedProperty actions = data.FindProperty("actions");
+            actions.arraySize = 1;
+            actions.GetArrayElementAtIndex(0).objectReferenceValue = Track(
                 InputActionReference.Create(Actions.FindAction("Global/Pause"))
             );
             data.FindProperty("view").objectReferenceValue = view;

@@ -1,4 +1,5 @@
 #if ENABLE_INPUT_SYSTEM
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -15,7 +16,8 @@ namespace Sentinal.InputSystem.Components
     }
 
     /// <summary>
-    /// Opens a view when its player presses an action. It only opens the view if the view's layer is at or above the
+    /// Opens a view when its player presses one of its actions. List the same shortcut once per action map it lives in
+    /// (e.g. Player/OtherMenu to open from gameplay and UI/OtherMenu to close from the menu). It only opens the view if the view's layer is at or above the
     /// focused window's layer and no Back press is pending, so one press never both closes one menu and opens another.
     /// One opener per scene may also open its view when the always-on Back has nothing to go back from
     /// (Escape: back out of menus, otherwise open Pause).
@@ -26,9 +28,9 @@ namespace Sentinal.InputSystem.Components
         [Header("Action")]
         [SerializeField]
         [Tooltip(
-            "Resolved on the player's own action asset. An asset without this action (e.g. another input layout) simply has the shortcut off."
+            "Any of these opens the view. List the same shortcut once per action map it lives in, since a view that moves its player to UI turns the gameplay map off. Each is resolved on the player's own action asset; one the asset lacks (e.g. another input layout) is simply off."
         )]
-        private InputActionReference action;
+        private InputActionReference[] actions;
 
         [Header("View")]
         [SerializeField]
@@ -52,7 +54,7 @@ namespace Sentinal.InputSystem.Components
         private bool opensOnUnhandledBack;
 
         private static OpenViewOnAction unhandledBackOpener;
-        private InputAction boundAction;
+        private readonly List<InputAction> boundActions = new();
         private bool configured;
 
         public SentinalView View => view;
@@ -66,12 +68,13 @@ namespace Sentinal.InputSystem.Components
 
         private void Awake()
         {
-            configured = action != null && action.action != null && view != null;
+            int missingActions = CountMissingActions();
+            configured = actions != null && actions.Length > 0 && missingActions == 0 && view != null;
             if (configured)
                 return;
 
             Debug.LogError(
-                $"[Sentinal] '{name}' {nameof(OpenViewOnAction)} expected an Action and a View; actual: Action={(action != null && action.action != null ? action.action.name : "none")}, View={(view != null ? view.name : "none")}.",
+                $"[Sentinal] '{name}' {nameof(OpenViewOnAction)} expected at least one Action, none missing, and a View; actual: Actions={(actions != null ? actions.Length : 0)} ({missingActions} missing), View={(view != null ? view.name : "none")}.",
                 this
             );
             enabled = false;
@@ -82,9 +85,15 @@ namespace Sentinal.InputSystem.Components
             if (!configured)
                 return;
 
-            boundAction = player.actions.FindAction(action.action.id);
-            if (boundAction != null)
-                boundAction.performed += OnPerformed;
+            foreach (InputActionReference reference in actions)
+            {
+                InputAction bound = player.actions.FindAction(reference.action.id);
+                if (bound == null || boundActions.Contains(bound))
+                    continue;
+
+                bound.performed += OnPerformed;
+                boundActions.Add(bound);
+            }
 
             if (opensOnUnhandledBack)
                 RegisterUnhandledBackOpener();
@@ -92,12 +101,27 @@ namespace Sentinal.InputSystem.Components
 
         protected override void Unsubscribe()
         {
-            if (boundAction != null)
-                boundAction.performed -= OnPerformed;
+            foreach (InputAction bound in boundActions)
+                bound.performed -= OnPerformed;
 
-            boundAction = null;
+            boundActions.Clear();
             if (unhandledBackOpener == this)
                 unhandledBackOpener = null;
+        }
+
+        private int CountMissingActions()
+        {
+            if (actions == null)
+                return 0;
+
+            int missing = 0;
+            foreach (InputActionReference reference in actions)
+            {
+                if (reference == null || reference.action == null)
+                    missing++;
+            }
+
+            return missing;
         }
 
         private void RegisterUnhandledBackOpener()

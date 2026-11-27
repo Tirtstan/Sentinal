@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.0.1] - 2026-11-27
+
+### Added
+
+- `TabbedView.SetTabAvailable(panel, available)` and `IsTabAvailable(index)` hide a tab at runtime. A tab whose toggle GameObject is inactive is skipped by the next/previous tab actions and the default tab, and `SelectTab` refuses it.
+
+### Changed
+
+- `OpenViewOnAction` takes a list of **Actions**, so one opener covers a shortcut that exists in several action maps (e.g. open from gameplay, close from UI). Its single **Action** field is gone; re-assign it in the list.
+
+### Fixed
+
+- `ViewInputComponent` no longer samples the Editor's stale `InputState.currentTime` when activating before Play Mode's first non-Editor input update (such as a pre-placed `PlayerInput` on initial scene load), which previously rejected fresh presses until Play Mode caught up to the Editor clock.
+- Suppressed the CS0414 warning for the serialized next-layer ID counter, which the settings editor reads and increments through Unity's serialized-property API.
+
 ## [6.0.0] - 2026-11-10
 
 A rewrite around layers and local players. This is a breaking release with no automatic 5.x migration; see **Upgrading from 5.x** in the README.

@@ -1,6 +1,6 @@
 {
     "name": "com.tirt.sentinal",
-    "version": "6.0.0",
+    "version": "6.0.1",
     "displayName": "Sentinal",
     "description": "Layered menus, dialogs and local-player UI for uGUI and the Input System: focus, Back, action maps and UI authority handled for you.",
     "unity": "6000.0",

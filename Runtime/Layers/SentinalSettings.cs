@@ -31,9 +31,11 @@ namespace Sentinal
         [SerializeField]
         private List<SceneBaseMap> sceneBaseMaps = new();
 
+#pragma warning disable CS0414 // Read and incremented through SerializedProperty by SentinalSettingsProvider.
         [SerializeField]
         [HideInInspector]
         private int nextLayerId = 1;
+#pragma warning restore CS0414
 
         private static SentinalSettings instance;
 

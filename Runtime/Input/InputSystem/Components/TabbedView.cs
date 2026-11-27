@@ -14,6 +14,8 @@ namespace Sentinal.InputSystem.Components
     /// (the nearest <see cref="SentinalView"/> at or above it); opening one tab closes the others, and Back on a
     /// tab passes through to the owner. The next/previous tab actions are its owner's player's, and work while the
     /// owner is focused (focus on it or one of its tabs; a focused popup inside it stops them).
+    /// A tab whose toggle GameObject is inactive is unavailable: it is skipped by the tab actions and the default tab,
+    /// and cannot be selected. Use <see cref="SetTabAvailable(SentinalView, bool)"/> to hide one at runtime.
     /// </summary>
     [DisallowMultipleComponent]
     public class TabbedView : ViewInputComponent
@@ -98,7 +100,11 @@ namespace Sentinal.InputSystem.Components
         protected override void OnEnable()
         {
             if (groupToggles.Length > 0)
+            {
+                if (!IsTabAvailable(currentTabIndex))
+                    currentTabIndex = ClampedDefault();
                 SelectTab(currentTabIndex);
+            }
 
             base.OnEnable();
         }
@@ -175,8 +181,68 @@ namespace Sentinal.InputSystem.Components
                 currentTabIndex = ClampedDefault();
         }
 
-        private int ClampedDefault() =>
-            groupToggles.Length > 0 ? Mathf.Clamp(defaultTabIndex, 0, groupToggles.Length - 1) : 0;
+        /// <summary>The default tab, or the first available tab after it when the default is unavailable.</summary>
+        private int ClampedDefault()
+        {
+            if (groupToggles.Length == 0)
+                return 0;
+
+            int start = Mathf.Clamp(defaultTabIndex, 0, groupToggles.Length - 1);
+            int available = FindAvailable(start, 1, wrap: true);
+            return available >= 0 ? available : start;
+        }
+
+        /// <summary>Whether a tab can be selected: its toggle GameObject is active.</summary>
+        public bool IsTabAvailable(int index) =>
+            index >= 0
+            && index < groupToggles.Length
+            && groupToggles[index] != null
+            && groupToggles[index].gameObject.activeSelf;
+
+        /// <summary>
+        /// Shows or hides a tab's toggle. A hidden tab is skipped by the tab actions; when it is the current tab, the
+        /// next available tab opens instead. Safe to call before or after this component's Awake.
+        /// </summary>
+        public void SetTabAvailable(SentinalView panel, bool available)
+        {
+            int index = IndexOfPanel(panel);
+            groupToggles[index].gameObject.SetActive(available);
+            if (available || index != currentTabIndex)
+                return;
+
+            int replacement = FindAvailable(index, 1, wrap: true);
+            if (replacement < 0)
+            {
+                groupPanels[index].Close();
+                return;
+            }
+
+            if (isActiveAndEnabled)
+                SelectTab(replacement);
+            else
+                currentTabIndex = replacement;
+        }
+
+        /// <summary>First available index from start (inclusive) stepping by direction, or -1 when none.</summary>
+        private int FindAvailable(int start, int direction, bool wrap)
+        {
+            int count = groupToggles.Length;
+            for (int step = 0; step < count; step++)
+            {
+                int index = start + step * direction;
+                if (index < 0 || index >= count)
+                {
+                    if (!wrap)
+                        return -1;
+                    index = (index % count + count) % count;
+                }
+
+                if (IsTabAvailable(index))
+                    return index;
+            }
+
+            return -1;
+        }
 
         private void ValidatePanels()
         {
@@ -206,32 +272,48 @@ namespace Sentinal.InputSystem.Components
             }
         }
 
+        /// <summary>Selects the next available tab. Without wrap, stays put at the last available tab.</summary>
         public void Next(bool wrap)
         {
-            if (groupToggles.Length == 0)
-                return;
-
-            int nextIndex = currentTabIndex + 1;
-            if (nextIndex >= groupToggles.Length)
-                nextIndex = wrap ? 0 : groupToggles.Length - 1;
-
-            SelectTab(nextIndex);
+            int nextIndex = FindAvailable(currentTabIndex + 1, 1, wrap);
+            if (nextIndex >= 0)
+                SelectTab(nextIndex);
         }
 
+        /// <summary>Selects the previous available tab. Without wrap, stays put at the first available tab.</summary>
         public void Previous(bool wrap)
         {
-            if (groupToggles.Length == 0)
-                return;
-
-            int previousIndex = currentTabIndex - 1;
-            if (previousIndex < 0)
-                previousIndex = wrap ? groupToggles.Length - 1 : 0;
-
-            SelectTab(previousIndex);
+            int previousIndex = FindAvailable(currentTabIndex - 1, -1, wrap);
+            if (previousIndex >= 0)
+                SelectTab(previousIndex);
         }
 
         /// <summary>Selects an authored panel. Can be wired directly to a Button's onClick event.</summary>
         public void SelectTab(SentinalView panel)
+        {
+            SelectTab(IndexOfPanel(panel));
+        }
+
+        /// <summary>Selects an available tab by index. Returns false for an out-of-range or unavailable tab.</summary>
+        public bool SelectTab(int index)
+        {
+            if (!IsTabAvailable(index))
+                return false;
+
+            currentTabIndex = index;
+            Toggle toggle = groupToggles[index];
+            if (toggle != null && !toggle.isOn)
+                toggle.isOn = true;
+
+            for (int i = 0; i < groupPanels.Length; i++)
+                if (i != index)
+                    groupPanels[i].Close();
+
+            groupPanels[index].Open();
+            return true;
+        }
+
+        private int IndexOfPanel(SentinalView panel)
         {
             if (panel == null)
                 throw new ArgumentNullException(
@@ -246,25 +328,7 @@ namespace Sentinal.InputSystem.Components
                     nameof(panel)
                 );
 
-            SelectTab(index);
-        }
-
-        public bool SelectTab(int index)
-        {
-            if (index < 0 || index >= groupToggles.Length)
-                return false;
-
-            currentTabIndex = index;
-            Toggle toggle = groupToggles[index];
-            if (toggle != null && !toggle.isOn)
-                toggle.isOn = true;
-
-            for (int i = 0; i < groupPanels.Length; i++)
-                if (i != index)
-                    groupPanels[i].Close();
-
-            groupPanels[index].Open();
-            return true;
+            return index;
         }
 
         private void OnTabToggle(int tabIndex, bool isOn)
